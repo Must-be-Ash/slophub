@@ -1,30 +1,261 @@
-23:58:15.507 Running build in Washington, D.C., USA (East) – iad1
-23:58:15.508 Build machine configuration: 4 cores, 8 GB
-23:58:15.605 Retrieving list of deployment files...
-23:58:15.608 Previous build caches not available.
-23:58:16.084 Downloading 6 deployment files...
-23:58:16.484 Running "vercel build"
-23:58:16.892 Vercel CLI 48.12.0
-23:58:17.202 Installing dependencies...
-23:58:19.231 npm error code ERESOLVE
-23:58:19.231 npm error ERESOLVE unable to resolve dependency tree
-23:58:19.231 npm error
-23:58:19.232 npm error While resolving: blog-cryptocurrency-1764835093268@0.1.0
-23:58:19.232 npm error Found: react@19.0.0
-23:58:19.232 npm error node_modules/react
-23:58:19.232 npm error   react@"19.0.0" from the root project
-23:58:19.232 npm error
-23:58:19.232 npm error Could not resolve dependency:
-23:58:19.232 npm error peer react@"^18.2.0 || 19.0.0-rc-65a56d0e-20241020" from next@15.0.0
-23:58:19.232 npm error node_modules/next
-23:58:19.233 npm error   next@"15.0.0" from the root project
-23:58:19.233 npm error
-23:58:19.233 npm error Fix the upstream dependency conflict, or retry
-23:58:19.233 npm error this command with --force or --legacy-peer-deps
-23:58:19.233 npm error to accept an incorrect (and potentially broken) dependency resolution.
-23:58:19.233 npm error
-23:58:19.233 npm error
-23:58:19.233 npm error For a full report see:
-23:58:19.233 npm error /vercel/.npm/_logs/2025-12-04T07_58_17_524Z-eresolve-report.txt
-23:58:19.234 npm error A complete log of this run can be found in: /vercel/.npm/_logs/2025-12-04T07_58_17_524Z-debug-0.log
-23:58:19.270 Error: Command "npm install" exited with 1
+
+[Status API] Returning cached steps for runId: wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA count: 6
+ GET /api/workflows/untitled-4/status?runId=wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA&stream=true 200 in 4ms (compile: 1240µs, render: 2ms)
+ POST /.well-known/workflow/v1/step 200 in 952ms (compile: 932µs, render: 951ms)
+ GET /api/workflows/untitled-4/status?runId=wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA&stream=true 200 in 3ms (compile: 780µs, render: 1824µs)
+Failed to log step scrape: MongoServerSelectionError: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+
+    at async logStepDataStep (app/.well-known/workflow/v1/step/route.js:552:5)
+  550 |   const client = new MongoClient2(mongoUri);
+  551 |   try {
+> 552 |     await client.connect();
+      |     ^
+  553 |     const database = client.db("blog-agent");
+  554 |     const collection = database.collection("workflow_step_logs");
+  555 |     const logEntry = { {
+  errorLabelSet: Set(0) {},
+  reason: [TopologyDescription],
+  code: undefined,
+  [cause]: MongoNetworkError: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+  
+      at ignore-listed frames {
+    errorLabelSet: Set(1) { 'ResetPool' },
+    beforeHandshake: false,
+    [cause]: [Error: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+    ] {
+      library: 'SSL routines',
+      reason: 'tlsv1 alert internal error',
+      code: 'ERR_SSL_TLSV1_ALERT_INTERNAL_ERROR'
+    }
+  }
+}
+[Status API] Returning cached steps for runId: wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA count: 6
+ GET /api/workflows/untitled-4/status?runId=wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA&stream=true 200 in 3ms (compile: 792µs, render: 2ms)
+ POST /.well-known/workflow/v1/step 200 in 30.2s (compile: 678µs, render: 30.2s)
+ POST /.well-known/workflow/v1/flow 200 in 22ms (compile: 875µs, render: 21ms)
+ POST /.well-known/workflow/v1/step 200 in 10ms (compile: 697µs, render: 10ms)
+ POST /.well-known/workflow/v1/flow 200 in 24ms (compile: 904µs, render: 23ms)
+ GET /api/workflows/untitled-4/status?runId=wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA&stream=true 200 in 3ms (compile: 1018µs, render: 1861µs)
+Failed to log step search: MongoServerSelectionError: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+
+    at async logStepDataStep (app/.well-known/workflow/v1/step/route.js:552:5)
+  550 |   const client = new MongoClient2(mongoUri);
+  551 |   try {
+> 552 |     await client.connect();
+      |     ^
+  553 |     const database = client.db("blog-agent");
+  554 |     const collection = database.collection("workflow_step_logs");
+  555 |     const logEntry = { {
+  errorLabelSet: Set(0) {},
+  reason: [TopologyDescription],
+  code: undefined,
+  [cause]: MongoNetworkError: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+  
+      at ignore-listed frames {
+    errorLabelSet: Set(1) { 'ResetPool' },
+    beforeHandshake: false,
+    [cause]: [Error: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+    ] {
+      library: 'SSL routines',
+      reason: 'tlsv1 alert internal error',
+      code: 'ERR_SSL_TLSV1_ALERT_INTERNAL_ERROR'
+    }
+  }
+}
+ POST /.well-known/workflow/v1/step 200 in 30.1s (compile: 1224µs, render: 30.1s)
+ POST /.well-known/workflow/v1/flow 200 in 34ms (compile: 1370µs, render: 33ms)
+ POST /.well-known/workflow/v1/step 200 in 9ms (compile: 784µs, render: 8ms)
+ POST /.well-known/workflow/v1/flow 200 in 29ms (compile: 599µs, render: 29ms)
+[Status API] Returning cached steps for runId: wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA count: 6
+ GET /api/workflows/untitled-4/status?runId=wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA&stream=true 200 in 3ms (compile: 1488µs, render: 1933µs)
+Failed to log step generate: MongoServerSelectionError: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+
+    at async logStepDataStep (app/.well-known/workflow/v1/step/route.js:552:5)
+  550 |   const client = new MongoClient2(mongoUri);
+  551 |   try {
+> 552 |     await client.connect();
+      |     ^
+  553 |     const database = client.db("blog-agent");
+  554 |     const collection = database.collection("workflow_step_logs");
+  555 |     const logEntry = { {
+  errorLabelSet: Set(0) {},
+  reason: [TopologyDescription],
+  code: undefined,
+  [cause]: MongoNetworkError: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+  
+      at ignore-listed frames {
+    errorLabelSet: Set(1) { 'ResetPool' },
+    beforeHandshake: false,
+    [cause]: [Error: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+    ] {
+      library: 'SSL routines',
+      reason: 'tlsv1 alert internal error',
+      code: 'ERR_SSL_TLSV1_ALERT_INTERNAL_ERROR'
+    }
+  }
+}
+ POST /.well-known/workflow/v1/step 200 in 30.1s (compile: 649µs, render: 30.1s)
+ GET /api/workflows/untitled-4/status?runId=wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA&stream=true 200 in 3ms (compile: 827µs, render: 2ms)
+[Status API] Returning cached steps for runId: wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA count: 6
+ GET /api/workflows/untitled-4/status?runId=wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA&stream=true 200 in 4ms (compile: 1403µs, render: 2ms)
+Failed to log step create: MongoServerSelectionError: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+
+    at async logStepDataStep (app/.well-known/workflow/v1/step/route.js:552:5)
+  550 |   const client = new MongoClient2(mongoUri);
+  551 |   try {
+> 552 |     await client.connect();
+      |     ^
+  553 |     const database = client.db("blog-agent");
+  554 |     const collection = database.collection("workflow_step_logs");
+  555 |     const logEntry = { {
+  errorLabelSet: Set(0) {},
+  reason: [TopologyDescription],
+  code: undefined,
+  [cause]: MongoNetworkError: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+  
+      at ignore-listed frames {
+    errorLabelSet: Set(1) { 'ResetPool' },
+    beforeHandshake: false,
+    [cause]: [Error: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+    ] {
+      library: 'SSL routines',
+      reason: 'tlsv1 alert internal error',
+      code: 'ERR_SSL_TLSV1_ALERT_INTERNAL_ERROR'
+    }
+  }
+}
+ POST /.well-known/workflow/v1/step 200 in 30.1s (compile: 676µs, render: 30.1s)
+ POST /.well-known/workflow/v1/flow 200 in 60ms (compile: 1478µs, render: 58ms)
+ POST /.well-known/workflow/v1/step 200 in 11ms (compile: 820µs, render: 10ms)
+[Status API] Returning cached steps for runId: wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA count: 6
+
+)
+[Status API] Returning cached steps for runId: wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA count: 6
+ GET /api/workflows/untitled-4/status?runId=wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA&stream=true 200 in 3ms (compile: 1019µs, render: 2ms)
+MongoDB save error: MongoServerSelectionError: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+
+    at async saveToMongoDBStep (app/.well-known/workflow/v1/step/route.js:521:5)
+  519 |   const client = new MongoClient(mongoUri);
+  520 |   try {
+> 521 |     await client.connect();
+      |     ^
+  522 |     const database = client.db("blog-agent");
+  523 |     const collection = database.collection("workflows");
+  524 |     const result = await collection.insertOne(workflowData); {
+  errorLabelSet: Set(0) {},
+  reason: [TopologyDescription],
+  code: undefined,
+  [cause]: MongoNetworkError: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+  
+      at ignore-listed frames {
+    errorLabelSet: Set(1) { 'ResetPool' },
+    beforeHandshake: false,
+    [cause]: [Error: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+    ] {
+      library: 'SSL routines',
+      reason: 'tlsv1 alert internal error',
+      code: 'ERR_SSL_TLSV1_ALERT_INTERNAL_ERROR'
+    }
+  }
+}
+[Workflows] "wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA" - Encountered `Error` while executing step "step//workflows/steps/save-to-mongodb-step.ts//saveToMongoDBStep" (attempt 1):
+  > MongoServerSelectionError: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+    > 
+    >     at Topology.selectServer (/Users/ashnouruzi/blog-agent/node_modules/.pnpm/mongodb@6.21.0/node_modules/mongodb/lib/sdam/topology.js:327:38)
+    >     at async Topology._connect (/Users/ashnouruzi/blog-agent/node_modules/.pnpm/mongodb@6.21.0/node_modules/mongodb/lib/sdam/topology.js:200:28)
+
+  This step has failed but will be retried
+ POST /.well-known/workflow/v1/step 503 in 30.1s (compile: 699µs, render: 30.1s)
+
+3µs)
+[Status API] Returning cached steps for runId: wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA count: 6
+ GET /api/workflows/untitled-4/status?runId=wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA&stream=true 200 in 3ms (compile: 825µs, render: 1765µs)
+MongoDB save error: MongoServerSelectionError: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+
+    at async saveToMongoDBStep (app/.well-known/workflow/v1/step/route.js:521:5)
+  519 |   const client = new MongoClient(mongoUri);
+  520 |   try {
+> 521 |     await client.connect();
+      |     ^
+  522 |     const database = client.db("blog-agent");
+  523 |     const collection = database.collection("workflows");
+  524 |     const result = await collection.insertOne(workflowData); {
+  errorLabelSet: Set(0) {},
+  reason: [TopologyDescription],
+  code: undefined,
+  [cause]: MongoNetworkError: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+  
+      at ignore-listed frames {
+    errorLabelSet: Set(1) { 'ResetPool' },
+    beforeHandshake: false,
+    [cause]: [Error: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+    ] {
+      library: 'SSL routines',
+      reason: 'tlsv1 alert internal error',
+      code: 'ERR_SSL_TLSV1_ALERT_INTERNAL_ERROR'
+    }
+  }
+}
+[Workflows] "wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA" - Encountered `Error` while executing step "step//workflows/steps/save-to-mongodb-step.ts//saveToMongoDBStep" (attempt 2):
+  > MongoServerSelectionError: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+    > 
+    >     at Topology.selectServer (/Users/ashnouruzi/blog-agent/node_modules/.pnpm/mongodb@6.21.0/node_modules/mongodb/lib/sdam/topology.js:327:38)
+    >     at async Topology._connect (/Users/ashnouruzi/blog-agent/node_modules/.pnpm/mongodb@6.21.0/node_modules/mongodb/lib/sdam/topology.js:200:28)
+
+  This step has failed but will be retried
+ POST /.well-known/workflow/v1/step 503 in 30.1s (compile: 2ms, render: 30.1s)
+[Status API] Returning cached steps for runId: wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA count: 6
+
+ GET /api/workflows/untitled-4/status?runId=wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA&stream=true 200 in 3ms (compile: 968µs, render: 1792µs)
+[Status API] Returning cached steps for runId: wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA count: 6
+ GET /api/workflows/untitled-4/status?runId=wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA&stream=true 200 in 3ms (compile: 788µs, render: 2ms)
+MongoDB save error: MongoServerSelectionError: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+
+    at async saveToMongoDBStep (app/.well-known/workflow/v1/step/route.js:521:5)
+  519 |   const client = new MongoClient(mongoUri);
+  520 |   try {
+> 521 |     await client.connect();
+      |     ^
+  522 |     const database = client.db("blog-agent");
+  523 |     const collection = database.collection("workflows");
+  524 |     const result = await collection.insertOne(workflowData); {
+  errorLabelSet: Set(0) {},
+  reason: [TopologyDescription],
+  code: undefined,
+  [cause]: MongoNetworkError: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+  
+      at ignore-listed frames {
+    errorLabelSet: Set(1) { 'ResetPool' },
+    beforeHandshake: false,
+    [cause]: [Error: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+    ] {
+      library: 'SSL routines',
+      reason: 'tlsv1 alert internal error',
+      code: 'ERR_SSL_TLSV1_ALERT_INTERNAL_ERROR'
+    }
+  }
+}
+[Workflows] "wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA" - Encountered `Error` while executing step "step//workflows/steps/save-to-mongodb-step.ts//saveToMongoDBStep" (attempt 3):
+  > MongoServerSelectionError: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+    > 
+    >     at Topology.selectServer (/Users/ashnouruzi/blog-agent/node_modules/.pnpm/mongodb@6.21.0/node_modules/mongodb/lib/sdam/topology.js:327:38)
+    >     at async Topology._connect (/Users/ashnouruzi/blog-agent/node_modules/.pnpm/mongodb@6.21.0/node_modules/mongodb/lib/sdam/topology.js:200:28)
+
+  Max retries reached
+  Bubbling error to parent workflow
+ POST /.well-known/workflow/v1/step 200 in 30.1s (compile: 1640µs, render: 30.1s)
+MongoDB save failed: Error [FatalError]: Step "step//workflows/steps/save-to-mongodb-step.ts//saveToMongoDBStep" failed after max retries: MongoServerSelectionError: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+
+    at ignore-listed frames {
+  fatal: true
+}
+ POST /.well-known/workflow/v1/flow 200 in 83ms (compile: 1109µs, render: 82ms)
+ POST /.well-known/workflow/v1/step 200 in 10ms (compile: 764µs, render: 9ms)
+MongoDB save failed: Error [FatalError]: Step "step//workflows/steps/save-to-mongodb-step.ts//saveToMongoDBStep" failed after max retries: MongoServerSelectionError: 00E2970102000000:error:0A000438:SSL routines:ssl3_read_bytes:tlsv1 alert internal error:ssl/record/rec_layer_s3.c:916:SSL alert number 80
+
+    at ignore-listed frames {
+  fatal: true
+}
+ POST /.well-known/workflow/v1/flow 200 in 63ms (compile: 1071µs, render: 62ms)
+[Status API] Returning cached steps for runId: wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA count: 6
+ GET /api/workflows/untitled-4/status?runId=wrun_01KBNJ4CNFM2F7CN4KPPNK3WWA&stream=true 200 in 4ms (compile: 889µs, render: 3ms)

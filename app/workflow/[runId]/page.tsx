@@ -1,4 +1,6 @@
 import { WorkflowStatusClient } from '@/components/workflow-status-client';
+import { Sparkles } from 'lucide-react';
+import Link from 'next/link';
 
 export default async function WorkflowPage({
   params
@@ -28,11 +30,37 @@ export default async function WorkflowPage({
   }
 
   return (
-    <main className="min-h-screen p-8">
-      <WorkflowStatusClient
-        runId={runId}
-        initialData={initialData}
+    <main className="min-h-screen bg-[#fafafa] flex flex-col">
+      {/* Subtle grid pattern background */}
+      <div 
+        className="fixed inset-0 pointer-events-none"
+        style={{
+          backgroundImage: `radial-gradient(circle at 1px 1px, rgb(0 0 0 / 0.03) 1px, transparent 0)`,
+          backgroundSize: '24px 24px',
+        }}
       />
+      
+      {/* Header */}
+      <header className="relative py-6 px-6">
+        <div className="max-w-5xl mx-auto">
+          <Link href="/" className="inline-flex items-center gap-3 group">
+            <div className="h-10 w-10 rounded-xl bg-black flex items-center justify-center">
+              <Sparkles className="h-5 w-5 text-white" />
+            </div>
+            <span className="text-lg font-semibold text-slate-900 group-hover:text-slate-600 transition-colors">
+              Blog Generator
+            </span>
+          </Link>
+        </div>
+      </header>
+
+      {/* Main content */}
+      <div className="flex-1 px-6 pb-12 relative">
+        <WorkflowStatusClient
+          runId={runId}
+          initialData={initialData}
+        />
+      </div>
     </main>
   );
 }

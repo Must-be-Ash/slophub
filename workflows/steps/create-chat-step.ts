@@ -26,6 +26,7 @@ export async function createChatStep({
         },
       ],
       model: 'v0-1.0-md',
+      max_tokens: 16000, // Request longer output to avoid truncation of blog pages
     }),
   });
 

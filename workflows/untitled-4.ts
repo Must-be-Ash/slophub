@@ -157,6 +157,7 @@ export async function untitled4Workflow(input: { url: string }) {
         metadata: scrapeResult.metadata,
         markdown: scrapeResult.markdown,
         html: scrapeResult.html,
+        branding: scrapeResult.branding, // Comprehensive Firecrawl branding data
         uploadedAssets,
         timestamp: Date.now(),
       },
@@ -193,7 +194,6 @@ export async function untitled4Workflow(input: { url: string }) {
         searchFocus: "internet",
         results: searchResult.results,
         citations: searchResult.citations,
-        model: searchResult.model,
         timestamp: Date.now(),
       },
     });
@@ -286,16 +286,77 @@ Create a detailed blog post spec that:
   try {
     const startTime = Date.now();
 
+    // Prepare comprehensive brand info from Firecrawl's branding extraction
+    const branding = scrapeResult.branding || {};
+    const colors = branding.colors || {};
+    const typography = branding.typography || {};
+    const components = branding.components || {};
+    const spacing = branding.spacing || {};
+
     const brandInfo = `
 Brand Identity from ${scrapeResult.metadata.title}:
 - Industry: ${scrapeResult.metadata.industry}
-- OG Image URL: ${ogImageAsset?.blobUrl || scrapeResult.metadata.ogImage || 'None'}
-- Favicon URL: ${faviconAsset?.blobUrl || scrapeResult.metadata.favicon || 'None'}
+- Color Scheme: ${branding.colorScheme || 'light'}
+- Logo URL: ${branding.logo || 'None'}
+- OG Image URL: ${ogImageAsset?.blobUrl || branding.images?.ogImage || scrapeResult.metadata.ogImage || 'None'}
+- Favicon URL: ${faviconAsset?.blobUrl || branding.images?.favicon || scrapeResult.metadata.favicon || 'None'}
 - Description: ${scrapeResult.metadata.description}
-- Keywords: ${scrapeResult.metadata.keywords || 'None'}
 
-IMPORTANT: Use the provided image URLs above for hero images, open graph images, and favicon.
-Extract and apply the brand's colors, fonts, and visual style from the scraped website content.
+COMPREHENSIVE BRAND STYLE GUIDE (AI-extracted from website):
+
+🎨 COLOR PALETTE:
+- Primary: ${colors.primary || '#000000'}
+- Secondary: ${colors.secondary || 'Not detected'}
+- Accent: ${colors.accent || 'Not detected'}
+- Background: ${colors.background || '#FFFFFF'}
+- Text Primary: ${colors.textPrimary || '#000000'}
+- Text Secondary: ${colors.textSecondary || '#666666'}
+- Link: ${colors.link || colors.primary || '#0000FF'}
+${colors.success ? `- Success: ${colors.success}` : ''}
+${colors.warning ? `- Warning: ${colors.warning}` : ''}
+${colors.error ? `- Error: ${colors.error}` : ''}
+
+✍️ TYPOGRAPHY:
+- Primary Font: ${typography.fontFamilies?.primary || branding.fonts?.[0]?.family || 'sans-serif'}
+- Heading Font: ${typography.fontFamilies?.heading || typography.fontFamilies?.primary || 'sans-serif'}
+- Body Font Size: ${typography.fontSizes?.body || '16px'}
+- H1 Size: ${typography.fontSizes?.h1 || '48px'}
+- H2 Size: ${typography.fontSizes?.h2 || '36px'}
+- H3 Size: ${typography.fontSizes?.h3 || '24px'}
+- Font Weight Regular: ${typography.fontWeights?.regular || 400}
+- Font Weight Bold: ${typography.fontWeights?.bold || 700}
+
+📐 SPACING & LAYOUT:
+- Base Unit: ${spacing.baseUnit || 8}px
+- Border Radius: ${spacing.borderRadius || '8px'}
+
+🎯 UI COMPONENTS:
+${components.buttonPrimary ? `
+- Button Primary:
+  Background: ${components.buttonPrimary.background}
+  Text: ${components.buttonPrimary.textColor}
+  Border Radius: ${components.buttonPrimary.borderRadius}
+` : ''}
+${components.buttonSecondary ? `
+- Button Secondary:
+  Background: ${components.buttonSecondary.background}
+  Text: ${components.buttonSecondary.textColor}
+  Border: ${components.buttonSecondary.borderColor}
+` : ''}
+
+🎭 BRAND PERSONALITY:
+${branding.personality?.tone ? `- Tone: ${branding.personality.tone}` : ''}
+${branding.personality?.energy ? `- Energy: ${branding.personality.energy}` : ''}
+${branding.personality?.audience ? `- Target Audience: ${branding.personality.audience}` : ''}
+
+CRITICAL STYLING REQUIREMENTS:
+1. Use EXACT colors from the palette above - this is the brand's visual DNA
+2. Apply the specified fonts and typography settings precisely
+3. Match spacing and border radius for visual consistency
+4. Use button component styles if provided
+5. Maintain the brand's color scheme (${branding.colorScheme || 'light'}) throughout
+6. Use the logo and images provided to reinforce brand identity
+7. The design MUST feel like a natural extension of ${scrapeResult.metadata.title}
 
 Industry Context: ${searchResult.results.slice(0, 500)}
 `;
@@ -374,6 +435,7 @@ Return ONLY the complete page.tsx file content with:
           title: scrapeResult.metadata.title,
           industry: scrapeResult.metadata.industry,
         },
+        comprehensiveBranding: scrapeResult.branding, // Full Firecrawl branding data used
         timestamp: Date.now(),
       },
     });
@@ -390,11 +452,58 @@ Return ONLY the complete page.tsx file content with:
   try {
     const startTime = Date.now();
 
-    // Extract code from V0 response (remove markdown code blocks if present)
+    // Extract code from V0 response (remove markdown code blocks and thinking tags)
     let pageCode = blogResult.blogPage;
-    const codeBlockMatch = pageCode.match(/```(?:tsx|typescript|jsx)?\s*\n([\s\S]*?)\n```/);
+
+    // Step 1: Remove <Thinking> tags (V0 includes reasoning in the response)
+    pageCode = pageCode.replace(/<Thinking>[\s\S]*?<\/Thinking>/gi, '');
+    pageCode = pageCode.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '');
+
+    // Step 2: Remove markdown code blocks - try multiple patterns
+    // Pattern 1: Standard markdown code block with language specifier
+    let codeBlockMatch = pageCode.match(/```(?:tsx|typescript|jsx|ts|js)?\s*\n([\s\S]*?)```/);
     if (codeBlockMatch) {
       pageCode = codeBlockMatch[1];
+    }
+
+    // Pattern 2: If still has code block markers at start, strip them
+    if (pageCode.trim().startsWith('```')) {
+      // Remove opening code block
+      pageCode = pageCode.replace(/^```(?:tsx|typescript|jsx|ts|js)?\s*\n/, '');
+      // Remove closing code block
+      pageCode = pageCode.replace(/\n```\s*$/, '');
+    }
+
+    // Step 3: Trim whitespace
+    pageCode = pageCode.trim();
+
+    // Step 4: Final check - if STILL starts with ```, do aggressive cleanup
+    if (pageCode.startsWith('```')) {
+      const lines = pageCode.split('\n');
+      // Remove first line if it's a code block marker
+      if (lines[0].trim().startsWith('```')) {
+        lines.shift();
+      }
+      // Remove last line if it's a code block marker
+      if (lines[lines.length - 1].trim() === '```') {
+        lines.pop();
+      }
+      pageCode = lines.join('\n').trim();
+    }
+
+    // Step 5: Validate that we have actual code
+    if (!pageCode || pageCode.length < 100) {
+      throw new Error(`V0 generated code is too short or empty after cleaning. Length: ${pageCode.length}`);
+    }
+
+    // Step 6: Basic validation: check if it looks like React/Next.js code
+    if (!pageCode.includes('export') && !pageCode.includes('function') && !pageCode.includes('const')) {
+      throw new Error('V0 generated code does not appear to be valid JavaScript/TypeScript');
+    }
+
+    // Step 7: Final validation - ensure it doesn't start with invalid syntax
+    if (pageCode.startsWith('```') || pageCode.startsWith('<')) {
+      throw new Error(`V0 generated code still contains markdown/XML markers. First 100 chars: ${pageCode.slice(0, 100)}`);
     }
 
     // Prepare files for deployment
@@ -418,14 +527,24 @@ Return ONLY the complete page.tsx file content with:
           },
           dependencies: {
             next: '15.0.0',
-            react: '19.0.0',
-            'react-dom': '19.0.0',
+            react: '^18.2.0',
+            'react-dom': '^18.2.0',
+            tailwindcss: '^3.4.1',
+            autoprefixer: '^10.4.17',
+            postcss: '^8.4.33',
+          },
+          devDependencies: {
+            typescript: '^5.3.3',
+            '@types/react': '^18.2.0',
+            '@types/node': '^20.11.5',
           },
         }, null, 2),
       },
       {
         file: 'app/layout.tsx',
-        data: `export default function RootLayout({ children }: { children: React.ReactNode }) {
+        data: `import './globals.css'
+
+export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body>{children}</body>
@@ -460,6 +579,36 @@ module.exports = {
         data: `@tailwind base;
 @tailwind components;
 @tailwind utilities;`,
+      },
+      {
+        file: 'tsconfig.json',
+        data: JSON.stringify({
+          compilerOptions: {
+            target: 'ES2017',
+            lib: ['dom', 'dom.iterable', 'esnext'],
+            allowJs: true,
+            skipLibCheck: true,
+            strict: false,
+            noEmit: true,
+            esModuleInterop: true,
+            module: 'esnext',
+            moduleResolution: 'bundler',
+            resolveJsonModule: true,
+            isolatedModules: true,
+            jsx: 'preserve',
+            incremental: true,
+            plugins: [
+              {
+                name: 'next'
+              }
+            ],
+            paths: {
+              '@/*': ['./*']
+            }
+          },
+          include: ['next-env.d.ts', '**/*.ts', '**/*.tsx', '.next/types/**/*.ts'],
+          exclude: ['node_modules']
+        }, null, 2),
       },
     ];
 
@@ -513,6 +662,7 @@ module.exports = {
           favicon: faviconAsset?.blobUrl || scrapeResult.metadata.favicon,
           uploadedAssets,
         },
+        branding: scrapeResult.branding, // Comprehensive Firecrawl branding data
         blogSpec: specResult.text,
         liveUrl: deployResult.url,
         deploymentId: deployResult.deploymentId,

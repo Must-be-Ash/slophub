@@ -1,3 +1,5 @@
+import { MongoClient } from 'mongodb';
+
 export async function saveToMongoDBStep({
   workflowData,
 }: {
@@ -6,6 +8,7 @@ export async function saveToMongoDBStep({
     url: string;
     industry: string;
     brandAssets: any;
+    branding?: any;
     blogSpec: string;
     liveUrl?: string;
     deploymentId?: string;
@@ -19,9 +22,6 @@ export async function saveToMongoDBStep({
   if (!mongoUri) {
     throw new Error('MONGODB_URI is not configured');
   }
-
-  // Use MongoDB native driver
-  const { MongoClient } = require('mongodb');
 
   const client = new MongoClient(mongoUri);
 

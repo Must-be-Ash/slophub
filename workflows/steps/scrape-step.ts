@@ -7,6 +7,7 @@ export async function firecrawlScrapeStep({ url }: { url: string }) {
     throw new Error('FIRECRAWL_API_KEY is not configured');
   }
 
+  // Use Firecrawl's built-in branding format for comprehensive brand extraction
   const response = await fetch('https://api.firecrawl.dev/v1/scrape', {
     method: 'POST',
     headers: {
@@ -15,9 +16,9 @@ export async function firecrawlScrapeStep({ url }: { url: string }) {
     },
     body: JSON.stringify({
       url,
-      formats: ['markdown', 'html'],
-      onlyMainContent: true,
-      includeTags: ['meta', 'title'],
+      formats: ['markdown', 'html', 'branding'], // ✅ Use Firecrawl's branding format
+      onlyMainContent: false, // Get full HTML including styles
+      waitFor: 2000, // Wait for dynamic content
     }),
   });
 
@@ -48,18 +49,36 @@ export async function firecrawlScrapeStep({ url }: { url: string }) {
     industry = 'healthcare';
   }
 
+  // Use Firecrawl's comprehensive branding data
+  const branding = data.data?.branding || {};
+
   return {
     markdown: data.data?.markdown || '',
     html: html,
     metadata: {
       title: metadata.title || metadata.ogTitle || 'Untitled',
       description: metadata.description || metadata.ogDescription || '',
-      ogImage: metadata.ogImage || '',
-      favicon: metadata.favicon || '',
+      ogImage: metadata.ogImage || branding.images?.ogImage || '',
+      favicon: metadata.favicon || branding.images?.favicon || '',
       keywords: metadata.keywords || '',
       author: metadata.author || '',
       industry: industry,
       url: url,
+    },
+    branding: {
+      // Firecrawl's comprehensive brand identity data
+      colorScheme: branding.colorScheme || 'light',
+      logo: branding.logo || branding.images?.logo || '',
+      colors: branding.colors || {},
+      fonts: branding.fonts || [],
+      typography: branding.typography || {},
+      spacing: branding.spacing || {},
+      components: branding.components || {},
+      images: branding.images || {},
+      personality: branding.personality || {},
+      // Legacy format for backward compatibility
+      primaryColor: branding.colors?.primary || '#000000',
+      fontFamily: branding.typography?.fontFamilies?.primary || branding.fonts?.[0]?.family || 'sans-serif',
     },
   };
 }
