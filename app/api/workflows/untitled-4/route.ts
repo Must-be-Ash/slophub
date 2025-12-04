@@ -24,8 +24,20 @@ export async function POST(request: Request) {
       );
     }
 
-    // Start the workflow execution
+    // Start the workflow execution (we'll get runId from the result)
     const run = await start(untitled4Workflow, [body]);
+
+    // Import cache to initialize the workflow
+    const { addStepUpdate } = await import('@/lib/workflow-cache');
+
+    // Initialize an empty cache entry for this workflow
+    // The workflow will populate it as it runs
+    addStepUpdate(run.runId, {
+      stepId: '_init',
+      stepLabel: 'Initializing',
+      status: 'pending',
+      timestamp: Date.now(),
+    });
 
     return NextResponse.json({
       success: true,

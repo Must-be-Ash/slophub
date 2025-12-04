@@ -5,6 +5,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const runId = searchParams.get('runId');
+    const stream = searchParams.get('stream') === 'true';
 
     if (!runId) {
       return NextResponse.json(
@@ -16,10 +17,30 @@ export async function GET(request: Request) {
     // Retrieve the workflow run by ID
     const run = getRun(runId);
 
-    // Get current status
-    const status = await run.status;
+    // If streaming is requested, return step updates from cache
+    if (stream) {
+      // Import the cache dynamically
+      const { getStepUpdates } = await import('@/lib/workflow-cache');
+      const steps = getStepUpdates(runId);
 
-    // If completed, get the result (non-blocking since already complete)
+      const status = await run.status;
+      let result = null;
+      if (status === 'completed') {
+        result = await run.returnValue;
+      }
+
+      console.log('[Status API] Returning cached steps for runId:', runId, 'count:', steps.length);
+
+      return NextResponse.json({
+        runId,
+        steps,
+        status,
+        result,
+      });
+    }
+
+    // Default behavior: return overall status
+    const status = await run.status;
     let result = null;
     if (status === 'completed') {
       result = await run.returnValue;

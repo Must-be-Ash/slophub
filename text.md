@@ -1,0 +1,1 @@
+I want you to quality check the outputs from scraping for brand assets (colour palate, font, favicon, logo, metadata, og image, and style), web search, prompt generation and v0 blog generation
