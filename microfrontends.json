@@ -2,7 +2,9 @@
   "$schema": "https://openapi.vercel.sh/microfrontends.json",
   "applications": {
     "blog-agent": {
-      "paths": {}
+      "paths": {
+        "/landing-wrun_01KBP6X0GJZXJYY0XVS13TPRMT": "funnel-cryptocurrency-1764903448476"
+      }
     }
   }
 }
