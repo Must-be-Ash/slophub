@@ -7,9 +7,11 @@ import { ArrowRight, Sparkles } from 'lucide-react';
 
 export default function Home() {
   const [url, setUrl] = useState('');
+  const [campaignDescription, setDescription] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [focused, setFocused] = useState(false);
+  const [focusedCampaign, setFocusedCampaign] = useState(false);
   const router = useRouter();
 
   const validateUrl = (url: string): string | null => {
@@ -25,12 +27,26 @@ export default function Home() {
     }
   };
 
+  const validateCampaign = (description: string): string | null => {
+    if (!description.trim()) return 'Campaign description is required';
+    if (description.trim().length < 20) {
+      return 'Campaign description must be at least 20 characters';
+    }
+    return null;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
-    const validationError = validateUrl(url);
-    if (validationError) {
-      setError(validationError);
+    const urlError = validateUrl(url);
+    if (urlError) {
+      setError(urlError);
+      return;
+    }
+
+    const campaignError = validateCampaign(campaignDescription);
+    if (campaignError) {
+      setError(campaignError);
       return;
     }
 
@@ -41,7 +57,7 @@ export default function Home() {
       const response = await fetch('/api/workflows/untitled-4', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url }),
+        body: JSON.stringify({ url, campaignDescription }),
       });
 
       if (!response.ok) {
@@ -81,10 +97,10 @@ export default function Home() {
           {/* Heading */}
           <div className="text-center mb-10">
             <h1 className="text-4xl font-semibold tracking-tight text-slate-900 mb-3">
-              Blog Generator
+              Landing Page Generator
             </h1>
             <p className="text-slate-500 text-lg">
-              Transform any website into an SEO-optimized blog post
+              Create conversion-focused landing pages for your campaigns
             </p>
           </div>
 
@@ -119,15 +135,41 @@ export default function Home() {
               )}
             </div>
 
+            <div className="relative">
+              <div
+                className={`
+                  relative bg-white rounded-2xl transition-all duration-300
+                  ${focusedCampaign ? 'shadow-lg shadow-black/5 ring-2 ring-black/5' : 'shadow-sm shadow-black/5'}
+                `}
+              >
+                <textarea
+                  value={campaignDescription}
+                  onChange={(e) => {
+                    setDescription(e.target.value);
+                    if (error) setError(null);
+                  }}
+                  onFocus={() => setFocusedCampaign(true)}
+                  onBlur={() => setFocusedCampaign(false)}
+                  placeholder="Example: Target small business owners who need simple invoicing software. Focus on saving time and reducing paperwork hassle."
+                  rows={4}
+                  className="w-full px-5 py-4 bg-transparent text-slate-900 placeholder:text-slate-400 focus:outline-none text-base rounded-2xl resize-none"
+                  disabled={loading}
+                />
+              </div>
+              <p className="absolute -bottom-6 left-0 text-xs text-slate-400">
+                Describe who you're targeting and what this campaign is about
+              </p>
+            </div>
+
             <button
               type="submit"
-              disabled={loading || !url.trim()}
+              disabled={loading || !url.trim() || !campaignDescription.trim() || campaignDescription.trim().length < 20}
               className={`
                 w-full py-4 px-6 rounded-2xl font-medium text-base
                 flex items-center justify-center gap-2
                 transition-all duration-200
-                ${loading || !url.trim() 
-                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed' 
+                ${loading || !url.trim() || !campaignDescription.trim() || campaignDescription.trim().length < 20
+                  ? 'bg-slate-100 text-slate-400 cursor-not-allowed'
                   : 'bg-black text-white hover:bg-slate-800 active:scale-[0.98]'
                 }
               `}
@@ -137,11 +179,11 @@ export default function Home() {
                   duration={1.2}
                   className="text-base font-medium [--base-color:theme(colors.slate.500)] [--base-gradient-color:theme(colors.slate.300)]"
                 >
-                  Generating your blog...
+                  Creating your landing page...
                 </TextShimmer>
               ) : (
                 <>
-                  Generate Blog
+                  Generate Landing Page
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
@@ -152,15 +194,15 @@ export default function Home() {
           <div className="mt-12 flex items-center justify-center gap-6 text-sm text-slate-400">
             <div className="flex items-center gap-1.5">
               <div className="h-1 w-1 rounded-full bg-slate-300" />
-              <span>Brand-aware</span>
+              <span>Conversion-focused</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="h-1 w-1 rounded-full bg-slate-300" />
-              <span>SEO-optimized</span>
+              <span>Brand-consistent</span>
             </div>
             <div className="flex items-center gap-1.5">
               <div className="h-1 w-1 rounded-full bg-slate-300" />
-              <span>Auto-deployed</span>
+              <span>Single-purpose CTAs</span>
             </div>
           </div>
         </div>

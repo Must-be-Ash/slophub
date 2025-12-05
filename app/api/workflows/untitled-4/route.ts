@@ -24,6 +24,21 @@ export async function POST(request: Request) {
       );
     }
 
+    // Validate campaign description
+    if (!body.campaignDescription || typeof body.campaignDescription !== 'string') {
+      return NextResponse.json(
+        { error: 'Campaign description is required and must be a string' },
+        { status: 400 }
+      );
+    }
+
+    if (body.campaignDescription.trim().length < 20) {
+      return NextResponse.json(
+        { error: 'Campaign description must be at least 20 characters' },
+        { status: 400 }
+      );
+    }
+
     // Start the workflow execution (we'll get runId from the result)
     const run = await start(untitled4Workflow, [body]);
 

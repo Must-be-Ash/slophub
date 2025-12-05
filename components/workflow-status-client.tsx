@@ -94,7 +94,7 @@ export function WorkflowStatusClient({
                 Generation Failed
               </h2>
               <p className="text-slate-500">
-                {error || 'An error occurred while generating the blog post.'}
+                {error || 'An error occurred while generating the landing page.'}
               </p>
             </div>
           </div>
@@ -131,7 +131,7 @@ export function WorkflowStatusClient({
         <div className="bg-white rounded-2xl shadow-sm shadow-black/5 p-8">
           <div className="text-center mb-8">
             <h1 className="text-2xl font-semibold text-slate-900 mb-2">
-              Generating Your Blog
+              Creating Your Landing Page
             </h1>
             <p className="text-slate-500">
               This usually takes 1-2 minutes
@@ -185,7 +185,7 @@ export function WorkflowStatusClient({
               <Check className="h-7 w-7 text-emerald-500" />
             </div>
             <h1 className="text-2xl font-semibold text-slate-900 mb-2">
-              Blog Generated Successfully
+              Landing Page Created Successfully
             </h1>
             {steps.length > 0 && (
               <p className="text-slate-500">
@@ -211,7 +211,7 @@ export function WorkflowStatusClient({
         {/* Live URL Card */}
         {hasLiveUrl && (
           <div className="bg-white rounded-2xl shadow-sm shadow-black/5 p-8">
-            <h3 className="text-lg font-semibold text-slate-900 mb-6">Your blog is live</h3>
+            <h3 className="text-lg font-semibold text-slate-900 mb-6">Your landing page is live</h3>
             
             <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl mb-6">
               <a
@@ -252,7 +252,7 @@ export function WorkflowStatusClient({
               <iframe
                 src={liveUrl}
                 className="w-full h-[500px]"
-                title="Blog Preview"
+                title="Landing Page Preview"
                 sandbox="allow-scripts allow-same-origin"
               />
             </div>
@@ -264,14 +264,14 @@ export function WorkflowStatusClient({
                 rel="noopener noreferrer"
                 className="flex-1 py-3 px-5 bg-black text-white font-medium rounded-xl hover:bg-slate-800 active:scale-[0.98] transition-all flex items-center justify-center gap-2"
               >
-                Open Blog
+                Open Landing Page
                 <ExternalLink className="h-4 w-4" />
               </a>
               <button
                 onClick={() => router.push('/')}
                 className="py-3 px-5 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 active:scale-[0.98] transition-all"
               >
-                Generate Another
+                Generate Another Landing Page
               </button>
             </div>
           </div>

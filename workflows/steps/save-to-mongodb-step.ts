@@ -9,7 +9,8 @@ export async function saveToMongoDBStep({
     industry: string;
     brandAssets: any;
     branding?: any;
-    blogSpec: string;
+    campaignDescription: string;
+    landingPageSpec: string;
     liveUrl?: string;
     deploymentId?: string;
     createdAt: number;

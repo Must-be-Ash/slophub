@@ -33,9 +33,9 @@ interface StepUpdate {
 // Workflow steps definition
 const WORKFLOW_STEPS = [
   { id: 'scrape', label: 'Scrape Website & Upload Assets' },
-  { id: 'search', label: 'Search Industry News' },
-  { id: 'generate', label: 'Generate Blog Spec' },
-  { id: 'create', label: 'Create Blog Page' },
+  { id: 'search', label: 'Research Campaign Data' },
+  { id: 'generate', label: 'Generate Landing Page Spec' },
+  { id: 'create', label: 'Create Landing Page' },
   { id: 'deploy', label: 'Deploy to Vercel' },
 ];
 
@@ -99,7 +99,7 @@ async function closeStreamStep(writable: WritableStream<StepUpdate>) {
   await writable.close();
 }
 
-export async function untitled4Workflow(input: { url: string }) {
+export async function untitled4Workflow(input: { url: string; campaignDescription: string }) {
   "use workflow";
 
   // Get workflow metadata to access runId
@@ -169,13 +169,13 @@ export async function untitled4Workflow(input: { url: string }) {
     throw error;
   }
 
-  // Step 2: Search News
+  // Step 2: Research Campaign Data
   await updateStepStatusStep(writable, runId, 'search', 'running');
   let searchResult;
   try {
     const startTime = Date.now();
     searchResult = await perplexitySearchStep({
-      query: `Industry news related to ${scrapeResult.metadata.industry}`,
+      query: `Research data and insights for this marketing campaign: ${input.campaignDescription}. Include market trends, target audience insights, relevant statistics, competitive analysis, and best practices.`,
       searchFocus: "internet",
     });
     await updateStepStatusStep(writable, runId, 'search', 'success', {
@@ -190,7 +190,7 @@ export async function untitled4Workflow(input: { url: string }) {
       runId,
       stepName: 'search',
       stepData: {
-        query: `Industry news related to ${scrapeResult.metadata.industry}`,
+        query: `Research data and insights for this marketing campaign: ${input.campaignDescription}`,
         searchFocus: "internet",
         results: searchResult.results,
         citations: searchResult.citations,
@@ -204,7 +204,7 @@ export async function untitled4Workflow(input: { url: string }) {
     throw error;
   }
 
-  // Step 3: Write Spec
+  // Step 3: Generate Landing Page Spec
   await updateStepStatusStep(writable, runId, 'generate', 'running');
   let specResult;
   try {
@@ -212,56 +212,90 @@ export async function untitled4Workflow(input: { url: string }) {
     specResult = await generateTextStep({
       aiFormat: "text",
       aiModel: "gpt-4o",
-      aiPrompt: `Create an SEO-optimized blog post specification based on this website data:
+      aiPrompt: `Create a conversion-focused landing page specification based on this campaign:
 
-Website Title: ${scrapeResult.metadata.title}
-Website Description: ${scrapeResult.metadata.description}
+BRAND INFORMATION:
+Website: ${input.url}
+Brand Title: ${scrapeResult.metadata.title}
+Brand Description: ${scrapeResult.metadata.description}
 Industry: ${scrapeResult.metadata.industry}
 
-Website Content:
-${scrapeResult.markdown.slice(0, 3000)}
+CAMPAIGN BRIEF:
+${input.campaignDescription}
 
-Related Industry News:
+MARKET RESEARCH & DATA:
 ${searchResult.results}
 
-Create a detailed blog post spec that:
-1. Is SEO-optimized with a compelling title and meta description
-2. Incorporates insights from the industry news
-3. Relates to the website's brand and industry
-4. Includes suggested headers, key points, and target keywords
-5. Provides a clear structure for the blog post`,
+BRAND CONTENT SAMPLE:
+${scrapeResult.markdown.slice(0, 2000)}
+
+Create a detailed landing page spec that:
+
+1. **HEADLINE & SUBHEADLINE:**
+   - Attention-grabbing headline that addresses the target audience from the campaign brief
+   - Supporting subheadline that clarifies the value proposition
+   - Use insights from the market research to make it compelling
+
+2. **HERO SECTION:**
+   - Compelling opening statement
+   - Clear benefit-driven messaging based on research data
+   - Primary CTA that leads to: ${input.url}
+
+3. **VALUE PROPOSITIONS (3-5 KEY BENEFITS):**
+   - Based on campaign description and market research
+   - Focus on solving target audience's pain points
+   - Use benefit-oriented language
+   - Incorporate relevant statistics from research
+
+4. **SOCIAL PROOF/TRUST ELEMENTS:**
+   - Testimonials framework (if applicable to campaign)
+   - Trust badges or credibility indicators
+   - Statistics or results from research data
+
+5. **FEATURE HIGHLIGHTS:**
+   - 3-5 key features relevant to the campaign
+   - Benefit-focused descriptions
+   - Visual representation suggestions
+   - Use competitive insights from research
+
+6. **FINAL CTA SECTION:**
+   - Strong closing statement
+   - Clear call-to-action
+   - Urgency or incentive messaging based on market trends
+   - Link destination: ${input.url}
+
+7. **SEO OPTIMIZATION:**
+   - Meta title (55-60 characters)
+   - Meta description (150-160 characters)
+   - Target keywords based on campaign and research
+
+CRITICAL REQUIREMENTS:
+- All CTAs and links MUST point to: ${input.url}
+- NO navigation menu
+- NO footer navigation links
+- NO external links except to ${input.url}
+- Single-purpose conversion focus
+- Brand-consistent messaging tone
+- Data-driven content using research insights
+
+Return a detailed specification with all sections clearly outlined.`,
     });
     await updateStepStatusStep(writable, runId, 'generate', 'success', {
       detail: {
         specLength: specResult.text.length,
         model: specResult.model,
+        targetUrl: input.url,
       },
       duration: Date.now() - startTime,
     });
 
-    // Log complete blog spec generation data to MongoDB
+    // Log complete landing page spec generation data to MongoDB
     await logStepDataStep({
       runId,
       stepName: 'generate',
       stepData: {
-        prompt: `Create an SEO-optimized blog post specification based on this website data:
-
-Website Title: ${scrapeResult.metadata.title}
-Website Description: ${scrapeResult.metadata.description}
-Industry: ${scrapeResult.metadata.industry}
-
-Website Content:
-${scrapeResult.markdown.slice(0, 3000)}
-
-Related Industry News:
-${searchResult.results}
-
-Create a detailed blog post spec that:
-1. Is SEO-optimized with a compelling title and meta description
-2. Incorporates insights from the industry news
-3. Relates to the website's brand and industry
-4. Includes suggested headers, key points, and target keywords
-5. Provides a clear structure for the blog post`,
+        campaignDescription: input.campaignDescription,
+        targetUrl: input.url,
         generatedSpec: specResult.text,
         model: specResult.model,
         format: 'text',
@@ -275,7 +309,7 @@ Create a detailed blog post spec that:
     throw error;
   }
 
-  // Step 4: Create Blog Page
+  // Step 4: Create Landing Page
   await updateStepStatusStep(writable, runId, 'create', 'running');
 
   // Prepare brand assets for V0 with Blob URLs (declare outside try for later use)
@@ -358,76 +392,111 @@ CRITICAL STYLING REQUIREMENTS:
 6. Use the logo and images provided to reinforce brand identity
 7. The design MUST feel like a natural extension of ${scrapeResult.metadata.title}
 
-Industry Context: ${searchResult.results.slice(0, 500)}
+Market Research Context: ${searchResult.results.slice(0, 500)}
 `;
 
     blogResult = await createChatStep({
-      message: `Create a complete, production-ready SINGLE-PAGE Next.js app for a blog post based on this specification:
+      message: `Create a complete, production-ready SINGLE-PAGE Next.js landing page based on this specification:
 
 ${specResult.text}
 
 ${brandInfo}
 
+TARGET URL FOR ALL CTAs: ${input.url}
+
 CRITICAL REQUIREMENTS:
-- Create a SINGLE-PAGE Next.js app (app/page.tsx)
-- Include ALL code in ONE file - no separate component files
-- Apply the brand's color palette, fonts, and visual style throughout
-- Use the brand's logo/OG image if provided
-- Include proper metadata with OG tags using Next.js metadata API
-- Make it a stunning, professional blog page that matches the brand identity
-- Style with Tailwind CSS
-- Make it responsive and mobile-friendly
-- Include a favicon reference
-- Use the brand's colors for headings, links, buttons, backgrounds
-- Make typography match the brand's style
+
+1. **LANDING PAGE STRUCTURE (NOT A BLOG):**
+   - Hero section with headline, subheadline, and primary CTA
+   - Value propositions section (3-5 benefits)
+   - Features/highlights section
+   - Social proof section (testimonials/trust badges if applicable)
+   - Final CTA section
+   - NO navigation menu at the top
+   - NO footer with links
+
+2. **LINK RESTRICTIONS (EXTREMELY IMPORTANT):**
+   - ALL buttons must link to: ${input.url}
+   - ALL CTAs must link to: ${input.url}
+   - ALL clickable elements must link to: ${input.url}
+   - DO NOT create navigation menus
+   - DO NOT create footer navigation
+   - DO NOT create "Read More" or blog-style links
+   - Only brand logo can be clickable (linking to ${input.url})
+   - NO links to "#" or "javascript:void(0)" or empty hrefs
+
+3. **STYLING & BRANDING:**
+   - Apply the brand's color palette throughout
+   - Use brand fonts and typography
+   - Include brand logo in top-left
+   - Match brand personality and tone
+   - Responsive and mobile-friendly design
+   - Style with Tailwind CSS
+
+4. **TECHNICAL REQUIREMENTS:**
+   - Create SINGLE-PAGE Next.js app (app/page.tsx)
+   - Include ALL code in ONE file
+   - Include proper metadata with OG tags using Next.js metadata API
+   - Include favicon reference
+   - NO separate component files
+   - Ready to deploy as-is
+
+5. **CONVERSION OPTIMIZATION:**
+   - Clear visual hierarchy
+   - Prominent CTAs above and below the fold
+   - Benefit-driven copy
+   - Scannable layout
+   - Action-oriented button text
+
+6. **EXAMPLES OF CORRECT CTA IMPLEMENTATION:**
+   \`\`\`tsx
+   // Primary CTA Button
+   <a
+     href="${input.url}"
+     className="bg-blue-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
+   >
+     Get Started
+   </a>
+
+   // Logo Link
+   <a href="${input.url}">
+     <Image src={logoUrl} alt="Brand" width={120} height={40} />
+   </a>
+
+   // Text CTA
+   <a
+     href="${input.url}"
+     className="text-blue-600 font-medium hover:underline"
+   >
+     Learn more →
+   </a>
+   \`\`\`
 
 OUTPUT FORMAT:
 Return ONLY the complete page.tsx file content with:
-1. Metadata export with title, description, OG tags
+1. Metadata export with SEO-optimized title, description, OG tags
 2. All components inline in the same file
 3. Full Tailwind CSS styling
-4. No imports from other files (except Next.js/React built-ins)
-5. Ready to deploy as-is`,
+4. All links pointing to ${input.url}
+5. NO navigation menu or footer links
+6. Conversion-focused landing page layout`,
     });
     await updateStepStatusStep(writable, runId, 'create', 'success', {
       detail: {
-        blogPageLength: blogResult.blogPage.length,
+        landingPageLength: blogResult.blogPage.length,
+        targetUrl: input.url,
       },
       duration: Date.now() - startTime,
     });
 
-    // Log complete V0 blog page generation data to MongoDB
+    // Log complete V0 landing page generation data to MongoDB
     await logStepDataStep({
       runId,
       stepName: 'create',
       stepData: {
-        prompt: `Create a complete, production-ready SINGLE-PAGE Next.js app for a blog post based on this specification:
-
-${specResult.text}
-
-${brandInfo}
-
-CRITICAL REQUIREMENTS:
-- Create a SINGLE-PAGE Next.js app (app/page.tsx)
-- Include ALL code in ONE file - no separate component files
-- Apply the brand's color palette, fonts, and visual style throughout
-- Use the brand's logo/OG image if provided
-- Include proper metadata with OG tags using Next.js metadata API
-- Make it a stunning, professional blog page that matches the brand identity
-- Style with Tailwind CSS
-- Make it responsive and mobile-friendly
-- Include a favicon reference
-- Use the brand's colors for headings, links, buttons, backgrounds
-- Make typography match the brand's style
-
-OUTPUT FORMAT:
-Return ONLY the complete page.tsx file content with:
-1. Metadata export with title, description, OG tags
-2. All components inline in the same file
-3. Full Tailwind CSS styling
-4. No imports from other files (except Next.js/React built-ins)
-5. Ready to deploy as-is`,
-        generatedBlogPage: blogResult.blogPage,
+        campaignDescription: input.campaignDescription,
+        targetUrl: input.url,
+        generatedLandingPage: blogResult.blogPage,
         model: blogResult.model,
         brandAssets: {
           ogImage: ogImageAsset?.blobUrl || scrapeResult.metadata.ogImage,
@@ -507,7 +576,7 @@ Return ONLY the complete page.tsx file content with:
     }
 
     // Prepare files for deployment
-    const projectName = `blog-${scrapeResult.metadata.industry.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
+    const projectName = `funnel-${scrapeResult.metadata.industry.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
 
     const files = [
       {
@@ -663,7 +732,8 @@ module.exports = {
           uploadedAssets,
         },
         branding: scrapeResult.branding, // Comprehensive Firecrawl branding data
-        blogSpec: specResult.text,
+        campaignDescription: input.campaignDescription,
+        landingPageSpec: specResult.text,
         liveUrl: deployResult.url,
         deploymentId: deployResult.deploymentId,
         createdAt: Date.now(),
@@ -678,12 +748,14 @@ module.exports = {
   await closeStreamStep(writable);
 
   return {
-    blogPage: blogResult.blogPage,
+    landingPage: blogResult.blogPage,
     liveUrl: deployResult.url,
     deploymentId: deployResult.deploymentId,
     spec: specResult.text,
     scrapeMetadata: scrapeResult.metadata,
-    newsResults: searchResult.results,
+    campaignDescription: input.campaignDescription,
+    targetUrl: input.url,
+    researchResults: searchResult.results,
     citations: searchResult.citations,
     uploadedAssets,
   };

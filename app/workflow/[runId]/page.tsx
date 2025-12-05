@@ -48,7 +48,7 @@ export default async function WorkflowPage({
               <Sparkles className="h-5 w-5 text-white" />
             </div>
             <span className="text-lg font-semibold text-slate-900 group-hover:text-slate-600 transition-colors">
-              Blog Generator
+              Landing Page Generator
             </span>
           </Link>
         </div>
@@ -73,7 +73,7 @@ export async function generateMetadata({
 }) {
   const { runId } = await params;
   return {
-    title: `Blog Generation - ${runId.slice(0, 8)}`,
-    description: 'Generating your SEO-optimized blog post',
+    title: `Landing Page Generation - ${runId.slice(0, 8)}`,
+    description: 'Creating your conversion-focused landing page',
   };
 }
