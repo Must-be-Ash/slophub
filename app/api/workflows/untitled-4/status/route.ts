@@ -34,6 +34,8 @@ export async function GET(request: Request) {
       const { getStepUpdates } = await import('@/lib/workflow-cache');
       const steps = getStepUpdates(runId);
 
+      console.log(`[Status API] Cached steps for ${runId}: ${steps.length} steps, runNotFound: ${runNotFound}`);
+
       // If we have steps in cache, workflow is running
       if (steps.length > 0) {
         const hasError = steps.some(s => s.status === 'error');
@@ -48,7 +50,7 @@ export async function GET(request: Request) {
           status = 'running';
         }
 
-        console.log(`[Status API] Using cached steps for runId: ${runId}, count: ${steps.length}, status: ${status}`);
+        console.log(`[Status API] Using cached steps - status: ${status}`);
 
         return NextResponse.json({
           runId,
@@ -58,13 +60,15 @@ export async function GET(request: Request) {
         });
       }
 
-      // No cached steps - if run exists, use it
+      // No cached steps yet - if run exists, use it
       if (!runNotFound && run) {
         const status = await run.status;
         let result = null;
         if (status === 'completed') {
           result = await run.returnValue;
         }
+
+        console.log(`[Status API] No cached steps, using run status: ${status}`);
 
         return NextResponse.json({
           runId,
@@ -74,7 +78,21 @@ export async function GET(request: Request) {
         });
       }
 
-      // No run, no cache - workflow doesn't exist
+      // No run object but runId was provided - workflow might be initializing
+      // Return "running" to avoid false "not found" error
+      if (runNotFound) {
+        console.log(`[Status API] Workflow not found in getRun(), assuming it's initializing`);
+
+        return NextResponse.json({
+          runId,
+          steps: [],
+          status: 'running',
+          result: null,
+        });
+      }
+
+      // Truly not found - no run, no cache, no runNotFound flag
+      console.error(`[Status API] Workflow ${runId} not found anywhere`);
       return NextResponse.json(
         { error: 'Workflow not found' },
         { status: 404 }
