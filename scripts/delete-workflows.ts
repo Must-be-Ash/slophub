@@ -5,6 +5,11 @@
  */
 
 import { MongoClient } from 'mongodb';
+import { config } from 'dotenv';
+import { resolve } from 'path';
+
+// Load environment variables from .env.local
+config({ path: resolve(__dirname, '../.env.local') });
 
 const RUN_IDS_TO_DELETE = [
   'wrun_01KBNYHY44660785KK3A1TW23J',
