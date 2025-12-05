@@ -1,5 +1,6 @@
 import { MongoClient } from 'mongodb';
 import { notFound } from 'next/navigation';
+import { FloatingCTA } from '@/components/floating-cta';
 
 interface PageProps {
   params: Promise<{
@@ -69,6 +70,7 @@ export default async function LandingPage({ params }: PageProps) {
           dangerouslySetInnerHTML={{ __html: bodyContent }}
           suppressHydrationWarning
         />
+        <FloatingCTA />
       </>
     );
   }
