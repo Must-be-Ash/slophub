@@ -5,13 +5,6 @@
       "development": {
         "fallback": "blog-agent-nine.vercel.app"
       }
-    },
-    "funnel-cryptocurrency-1764903448476": {
-      "routing": [
-        {
-          "paths": ["/landing-wrun_01KBP6X0GJZXJYY0XVS13TPRMT"]
-        }
-      ]
     }
   }
 }
