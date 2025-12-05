@@ -10,6 +10,7 @@ export async function deployToVercelStep({
   'use step';
 
   const apiKey = process.env.VERCEL_TOKEN;
+  const teamId = process.env.VERCEL_TEAM_ID;
 
   if (!apiKey) {
     throw new Error('VERCEL_TOKEN is not configured');
@@ -45,7 +46,11 @@ export async function deployToVercelStep({
   }
 
   // Step 2: Create deployment
-  const deploymentResponse = await fetch('https://api.vercel.com/v13/deployments', {
+  const apiEndpoint = teamId
+    ? `https://api.vercel.com/v13/deployments?teamId=${teamId}`
+    : 'https://api.vercel.com/v13/deployments';
+
+  const deploymentResponse = await fetch(apiEndpoint, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${apiKey}`,
@@ -82,7 +87,11 @@ export async function deployToVercelStep({
   while (readyState !== 'READY' && attempts < maxAttempts) {
     await new Promise(resolve => setTimeout(resolve, 1000));
 
-    const statusResponse = await fetch(`https://api.vercel.com/v13/deployments/${deployment.id}`, {
+    const statusUrl = teamId
+      ? `https://api.vercel.com/v13/deployments/${deployment.id}?teamId=${teamId}`
+      : `https://api.vercel.com/v13/deployments/${deployment.id}`;
+
+    const statusResponse = await fetch(statusUrl, {
       headers: {
         'Authorization': `Bearer ${apiKey}`,
       },
