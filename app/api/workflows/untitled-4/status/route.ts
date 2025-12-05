@@ -17,32 +17,78 @@ export async function GET(request: Request) {
       );
     }
 
-    // Retrieve the workflow run by ID
-    const run = getRun(runId);
+    // Try to get the workflow run
+    let run;
+    let runNotFound = false;
 
-    // If streaming is requested, return step updates from cache
-    if (stream) {
-      // Import the cache dynamically
+    try {
+      run = getRun(runId);
+    } catch (error) {
+      // Workflow not found in this instance - might be running on different instance
+      console.log('[Status API] getRun() failed, checking workflow cache:', runId);
+      runNotFound = true;
+    }
+
+    // If streaming is requested or run not found, check workflow cache
+    if (stream || runNotFound) {
       const { getStepUpdates } = await import('@/lib/workflow-cache');
       const steps = getStepUpdates(runId);
 
-      const status = await run.status;
-      let result = null;
-      if (status === 'completed') {
-        result = await run.returnValue;
+      // If we have steps in cache, workflow is running
+      if (steps.length > 0) {
+        const hasError = steps.some(s => s.status === 'error');
+        const allComplete = steps.every(s => s.status === 'success' || s.status === 'error');
+
+        let status: string;
+        if (hasError) {
+          status = 'failed';
+        } else if (allComplete && steps.length >= 6) { // We have 6 steps total
+          status = 'completed';
+        } else {
+          status = 'running';
+        }
+
+        console.log(`[Status API] Using cached steps for runId: ${runId}, count: ${steps.length}, status: ${status}`);
+
+        return NextResponse.json({
+          runId,
+          steps,
+          status,
+          result: status === 'completed' ? { message: 'Check MongoDB for results' } : null,
+        });
       }
 
-      console.log('[Status API] Returning cached steps for runId:', runId, 'count:', steps.length);
+      // No cached steps - if run exists, use it
+      if (!runNotFound && run) {
+        const status = await run.status;
+        let result = null;
+        if (status === 'completed') {
+          result = await run.returnValue;
+        }
 
-      return NextResponse.json({
-        runId,
-        steps,
-        status,
-        result,
-      });
+        return NextResponse.json({
+          runId,
+          steps,
+          status,
+          result,
+        });
+      }
+
+      // No run, no cache - workflow doesn't exist
+      return NextResponse.json(
+        { error: 'Workflow not found' },
+        { status: 404 }
+      );
     }
 
-    // Default behavior: return overall status
+    // Non-streaming mode and run exists
+    if (!run) {
+      return NextResponse.json(
+        { error: 'Workflow not found' },
+        { status: 404 }
+      );
+    }
+
     const status = await run.status;
     let result = null;
     if (status === 'completed') {
@@ -50,7 +96,7 @@ export async function GET(request: Request) {
     }
 
     return NextResponse.json({
-      status,  // 'running' | 'completed' | 'failed'
+      status,
       result,
       runId,
     });
