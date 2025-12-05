@@ -1,5 +1,4 @@
-import { generateText } from 'ai';
-import { openai } from '@ai-sdk/openai';
+import OpenAI from 'openai';
 
 export async function renderLandingPageHtmlStep({
   tsxCode,
@@ -15,10 +14,24 @@ export async function renderLandingPageHtmlStep({
 }): Promise<{ html: string }> {
   'use step';
 
+  const apiKey = process.env.OPENAI_API_KEY;
+
+  if (!apiKey) {
+    throw new Error('OPENAI_API_KEY is not configured');
+  }
+
+  // Create OpenAI client
+  const openai = new OpenAI({
+    apiKey: apiKey,
+  });
+
   // Use AI to convert TSX to static HTML
-  const { text: html } = await generateText({
-    model: openai('gpt-4o'),
-    prompt: `Convert this Next.js/React TSX code into a single standalone HTML file with inline CSS.
+  const completion = await openai.chat.completions.create({
+    model: 'gpt-4o',
+    messages: [
+      {
+        role: 'user',
+        content: `Convert this Next.js/React TSX code into a single standalone HTML file with inline CSS.
 
 REQUIREMENTS:
 1. Extract all Tailwind classes and convert to inline <style> tag
@@ -41,7 +54,13 @@ TSX CODE TO CONVERT:
 ${tsxCode}
 
 Return ONLY the complete HTML code, no explanations or markdown code blocks.`,
+      },
+    ],
+    temperature: 0.7,
+    max_tokens: 4000,
   });
+
+  const html = completion.choices[0]?.message?.content || '';
 
   // Clean up any markdown code blocks if present
   let cleanHtml = html.trim();
