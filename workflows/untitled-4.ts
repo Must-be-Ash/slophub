@@ -18,6 +18,7 @@ import { uploadAssetsStep } from './steps/upload-assets-step';
 import { saveToMongoDBStep } from './steps/save-to-mongodb-step';
 import { logStepDataStep } from './steps/log-step-data';
 import { falImageGenerationStep } from './steps/fal-image-generation-step';
+import { addToMicrofrontendsGroupStep } from './steps/add-to-microfrontends-group-step';
 import { registerMicrofrontendStep } from './steps/register-microfrontend-step';
 import { commitAndPushStep } from './steps/commit-and-push-step';
 import { addStepUpdate } from '../lib/workflow-cache';
@@ -41,6 +42,7 @@ const WORKFLOW_STEPS = [
   { id: 'images', label: 'Generate Landing Page Images' },
   { id: 'create', label: 'Create Landing Page' },
   { id: 'deploy', label: 'Deploy to Vercel' },
+  { id: 'addToGroup', label: 'Add to Microfrontends Group' },
   { id: 'register', label: 'Register Microfrontend' },
   { id: 'commit', label: 'Update Parent Application' },
   { id: 'screenshot', label: 'Capture Preview Screenshot' },
@@ -870,7 +872,57 @@ module.exports = nextConfig`,
     throw error;
   }
 
-  // Step 7: Register Microfrontend
+  // Step 7: Add to Microfrontends Group
+  await updateStepStatusStep(writable, runId, 'addToGroup', 'running');
+  let addedToGroup = false;
+  try {
+    const startTime = Date.now();
+
+    const microfrontendsGroupId = process.env.VERCEL_MICROFRONTENDS_GROUP_ID;
+
+    if (!microfrontendsGroupId) {
+      console.warn('VERCEL_MICROFRONTENDS_GROUP_ID not set, skipping add to group step');
+      await updateStepStatusStep(writable, runId, 'addToGroup', 'success', {
+        detail: { skipped: true, reason: 'No microfrontends group ID configured' },
+        duration: Date.now() - startTime,
+      });
+    } else {
+      const groupResult = await addToMicrofrontendsGroupStep({
+        projectName: deployResult.projectName,
+        microfrontendsGroupId,
+      });
+
+      addedToGroup = groupResult.addedToGroup;
+
+      await updateStepStatusStep(writable, runId, 'addToGroup', 'success', {
+        detail: {
+          addedToGroup: groupResult.addedToGroup,
+          projectName: deployResult.projectName,
+          groupId: microfrontendsGroupId,
+        },
+        duration: Date.now() - startTime,
+      });
+
+      await logStepDataStep({
+        runId,
+        stepName: 'addToGroup',
+        stepData: {
+          projectName: deployResult.projectName,
+          microfrontendsGroupId,
+          addedToGroup: groupResult.addedToGroup,
+          timestamp: Date.now(),
+        },
+      });
+    }
+  } catch (error) {
+    console.error('Failed to add to microfrontends group:', error);
+    await updateStepStatusStep(writable, runId, 'addToGroup', 'error', {
+      error: 'Failed to add to microfrontends group - will continue with manual addition',
+    });
+    // Don't throw - this is not critical, continue workflow
+  }
+
+  // Step 8: Register Microfrontend
   await updateStepStatusStep(writable, runId, 'register', 'running');
   let microfrontendPath: string | undefined;
   try {
@@ -905,7 +957,7 @@ module.exports = nextConfig`,
     // Don't throw - continue with standalone URL
   }
 
-  // Step 8: Commit and Push (Git Approach)
+  // Step 9: Commit and Push (Git Approach)
   await updateStepStatusStep(writable, runId, 'commit', 'running');
   let parentUpdated = false;
   try {
@@ -944,7 +996,7 @@ module.exports = nextConfig`,
     // Don't throw - landing page is still accessible via standalone URL
   }
 
-  // Step 9: Capture Screenshot
+  // Step 10: Capture Screenshot
   await updateStepStatusStep(writable, runId, 'screenshot', 'running');
   let screenshotUrl: string | undefined;
   try {
