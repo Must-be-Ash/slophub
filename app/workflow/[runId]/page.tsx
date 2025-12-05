@@ -10,8 +10,11 @@ export default async function WorkflowPage({
   // Unwrap params Promise
   const { runId } = await params;
 
-  // Fetch initial status server-side
-  const baseUrl = process.env.NEXT_PUBLIC_URL || 'http://localhost:3000';
+  // Determine base URL for server-side fetch
+  const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
+  const baseUrl = process.env.NEXT_PUBLIC_URL ||
+                  process.env.VERCEL_URL ? `${protocol}://${process.env.VERCEL_URL}` :
+                  'http://localhost:3000';
 
   let initialData;
   try {
@@ -26,7 +29,9 @@ export default async function WorkflowPage({
       initialData = await response.json();
     }
   } catch (error) {
-    initialData = { status: 'error', error: 'Failed to fetch workflow status' };
+    console.error('[Workflow Page] Failed to fetch initial status:', error);
+    // Don't fail on initial fetch - let client polling handle it
+    initialData = { status: 'running', error: undefined };
   }
 
   return (

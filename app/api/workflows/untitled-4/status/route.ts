@@ -1,6 +1,9 @@
 import { getRun } from 'workflow/api';
 import { NextResponse } from 'next/server';
 
+// Increase timeout for status checks
+export const maxDuration = 60;
+
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);

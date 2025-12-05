@@ -12,8 +12,7 @@ import { getWritable, getWorkflowMetadata } from 'workflow';
 import { firecrawlScrapeStep } from './steps/scrape-step';
 import { perplexitySearchStep } from './steps/search-step';
 import { generateTextStep } from './steps/generate-text-step';
-import { createChatStep } from './steps/create-chat-step';
-import { renderLandingPageHtmlStep } from './steps/render-landing-page-html-step';
+import { claudeGenerateHtmlStep } from './steps/claude-generate-html-step';
 import { uploadAssetsStep } from './steps/upload-assets-step';
 import { saveToMongoDBStep } from './steps/save-to-mongodb-step';
 import { logStepDataStep } from './steps/log-step-data';
@@ -37,8 +36,7 @@ const WORKFLOW_STEPS = [
   { id: 'search', label: 'Research Campaign Data' },
   { id: 'generate', label: 'Generate Landing Page Spec' },
   { id: 'images', label: 'Generate Landing Page Images' },
-  { id: 'create', label: 'Create Landing Page' },
-  { id: 'render', label: 'Render Landing Page HTML' },
+  { id: 'generateHtml', label: 'Generate HTML with Claude Opus 4.5' },
   { id: 'screenshot', label: 'Capture Preview Screenshot' },
 ];
 
@@ -389,294 +387,70 @@ Return a detailed specification with all sections clearly outlined.`,
     // Continue workflow - generatedImages will be empty array
   }
 
-  // Step 5: Create Landing Page
-  await updateStepStatusStep(writable, runId, 'create', 'running');
+  // Step 5: Generate HTML with Claude Opus 4.5
+  await updateStepStatusStep(writable, runId, 'generateHtml', 'running');
 
-  // Prepare brand assets for V0 with Blob URLs (declare outside try for later use)
+  // Prepare brand assets with Blob URLs
   const ogImageAsset = uploadedAssets.find(a => a.name === 'og-image');
   const faviconAsset = uploadedAssets.find(a => a.name === 'favicon');
 
-  let blogResult;
-  try {
-    const startTime = Date.now();
-
-    // Prepare comprehensive brand info from Firecrawl's branding extraction
-    const branding = scrapeResult.branding || {};
-    const colors = branding.colors || {};
-    const typography = branding.typography || {};
-    const components = branding.components || {};
-    const spacing = branding.spacing || {};
-
-    const brandInfo = `
-Brand Identity from ${scrapeResult.metadata.title}:
-- Industry: ${scrapeResult.metadata.industry}
-- Color Scheme: ${branding.colorScheme || 'light'}
-- Logo URL: ${branding.logo || 'None'}
-- OG Image URL: ${ogImageAsset?.blobUrl || branding.images?.ogImage || scrapeResult.metadata.ogImage || 'None'}
-- Favicon URL: ${faviconAsset?.blobUrl || branding.images?.favicon || scrapeResult.metadata.favicon || 'None'}
-- Description: ${scrapeResult.metadata.description}
-
-AVAILABLE IMAGES FOR LANDING PAGE:
-- Original Brand Assets:
-  - OG Image: ${ogImageAsset?.blobUrl || scrapeResult.metadata.ogImage || 'None'}
-  - Favicon: ${faviconAsset?.blobUrl || scrapeResult.metadata.favicon || 'None'}
-
-${generatedImages.length > 0 ? `
-- AI-Generated Section Images (use these prominently):
-${generatedImages.map((img) => `  - ${img.name}: ${img.blobUrl}`).join('\n')}
-` : ''}
-
-COMPREHENSIVE BRAND STYLE GUIDE (AI-extracted from website):
-
-🎨 COLOR PALETTE:
-- Primary: ${colors.primary || '#000000'}
-- Secondary: ${colors.secondary || 'Not detected'}
-- Accent: ${colors.accent || 'Not detected'}
-- Background: ${colors.background || '#FFFFFF'}
-- Text Primary: ${colors.textPrimary || '#000000'}
-- Text Secondary: ${colors.textSecondary || '#666666'}
-- Link: ${colors.link || colors.primary || '#0000FF'}
-${colors.success ? `- Success: ${colors.success}` : ''}
-${colors.warning ? `- Warning: ${colors.warning}` : ''}
-${colors.error ? `- Error: ${colors.error}` : ''}
-
-✍️ TYPOGRAPHY:
-- Primary Font: ${typography.fontFamilies?.primary || branding.fonts?.[0]?.family || 'sans-serif'}
-- Heading Font: ${typography.fontFamilies?.heading || typography.fontFamilies?.primary || 'sans-serif'}
-- Body Font Size: ${typography.fontSizes?.body || '16px'}
-- H1 Size: ${typography.fontSizes?.h1 || '48px'}
-- H2 Size: ${typography.fontSizes?.h2 || '36px'}
-- H3 Size: ${typography.fontSizes?.h3 || '24px'}
-- Font Weight Regular: ${typography.fontWeights?.regular || 400}
-- Font Weight Bold: ${typography.fontWeights?.bold || 700}
-
-📐 SPACING & LAYOUT:
-- Base Unit: ${spacing.baseUnit || 8}px
-- Border Radius: ${spacing.borderRadius || '8px'}
-
-🎯 UI COMPONENTS:
-${components.buttonPrimary ? `
-- Button Primary:
-  Background: ${components.buttonPrimary.background}
-  Text: ${components.buttonPrimary.textColor}
-  Border Radius: ${components.buttonPrimary.borderRadius}
-` : ''}
-${components.buttonSecondary ? `
-- Button Secondary:
-  Background: ${components.buttonSecondary.background}
-  Text: ${components.buttonSecondary.textColor}
-  Border: ${components.buttonSecondary.borderColor}
-` : ''}
-
-🎭 BRAND PERSONALITY:
-${branding.personality?.tone ? `- Tone: ${branding.personality.tone}` : ''}
-${branding.personality?.energy ? `- Energy: ${branding.personality.energy}` : ''}
-${branding.personality?.audience ? `- Target Audience: ${branding.personality.audience}` : ''}
-
-CRITICAL STYLING REQUIREMENTS:
-1. Use EXACT colors from the palette above - this is the brand's visual DNA
-2. Apply the specified fonts and typography settings precisely
-3. Match spacing and border radius for visual consistency
-4. Use button component styles if provided
-5. Maintain the brand's color scheme (${branding.colorScheme || 'light'}) throughout
-6. Use the logo and images provided to reinforce brand identity
-7. The design MUST feel like a natural extension of ${scrapeResult.metadata.title}
-
-Market Research Context: ${searchResult.results.slice(0, 500)}
-`;
-
-    blogResult = await createChatStep({
-      message: `Create a complete, production-ready SINGLE-PAGE Next.js landing page based on this specification:
-
-${specResult.text}
-
-${brandInfo}
-
-TARGET URL FOR ALL CTAs: ${input.url}
-
-**IMAGE USAGE:**
-${generatedImages.length > 0 ? `
-- You have ${generatedImages.length} AI-generated images specifically created for this landing page
-- Use these images prominently in:
-  - Value propositions section (${generatedImages[0]?.name}: ${generatedImages[0]?.blobUrl})
-  - Features section (${generatedImages[1]?.name}: ${generatedImages[1]?.blobUrl})
-  - Call-to-action section (${generatedImages[2]?.name}: ${generatedImages[2]?.blobUrl})
-- Images are square (1:1) - use in grid layouts, cards, or section backgrounds
-- IMPORTANT: Import and use Next.js Image component from 'next/image':
-  import Image from 'next/image'
-- Example usage:
-  <Image
-    src="${generatedImages[0]?.blobUrl}"
-    alt="Value Proposition"
-    width={500}
-    height={500}
-    className="rounded-lg"
-  />
-- The next.config.js already allows Vercel Blob storage images
-- IMPORTANT: Use these generated images instead of placeholder images
-- DO NOT use regular <img> tags for these images - use Next.js Image component
-` : `
-- Use brand OG image and favicon where appropriate
-- Consider using solid color backgrounds matching brand colors
-- No generated images available - use brand colors creatively
-`}
-
-CRITICAL REQUIREMENTS:
-
-1. **LANDING PAGE STRUCTURE (NOT A BLOG):**
-   - Hero section with headline, subheadline, and primary CTA
-   - Value propositions section (3-5 benefits)
-   - Features/highlights section
-   - Social proof section (testimonials/trust badges if applicable)
-   - Final CTA section
-   - NO navigation menu at the top
-   - NO footer with links
-
-2. **LINK RESTRICTIONS (EXTREMELY IMPORTANT):**
-   - ALL buttons must link to: ${input.url}
-   - ALL CTAs must link to: ${input.url}
-   - ALL clickable elements must link to: ${input.url}
-   - DO NOT create navigation menus
-   - DO NOT create footer navigation
-   - DO NOT create "Read More" or blog-style links
-   - Only brand logo can be clickable (linking to ${input.url})
-   - NO links to "#" or "javascript:void(0)" or empty hrefs
-
-3. **STYLING & BRANDING:**
-   - Apply the brand's color palette throughout
-   - Use brand fonts and typography
-   - Include brand logo in top-left
-   - Match brand personality and tone
-   - Responsive and mobile-friendly design
-   - Style with Tailwind CSS
-
-4. **TECHNICAL REQUIREMENTS:**
-   - Create SINGLE-PAGE Next.js app (app/page.tsx)
-   - Include ALL code in ONE file
-   - Include proper metadata with OG tags using Next.js metadata API
-   - Include favicon reference
-   - NO separate component files
-   - Ready to deploy as-is
-
-5. **CONVERSION OPTIMIZATION:**
-   - Clear visual hierarchy
-   - Prominent CTAs above and below the fold
-   - Benefit-driven copy
-   - Scannable layout
-   - Action-oriented button text
-
-6. **EXAMPLES OF CORRECT CTA IMPLEMENTATION:**
-   \`\`\`tsx
-   // Primary CTA Button
-   <a
-     href="${input.url}"
-     className="bg-blue-600 text-white px-8 py-4 rounded-lg font-semibold hover:bg-blue-700 transition-colors"
-   >
-     Get Started
-   </a>
-
-   // Logo Link
-   <a href="${input.url}">
-     <Image src={logoUrl} alt="Brand" width={120} height={40} />
-   </a>
-
-   // Text CTA
-   <a
-     href="${input.url}"
-     className="text-blue-600 font-medium hover:underline"
-   >
-     Learn more →
-   </a>
-   \`\`\`
-
-OUTPUT FORMAT:
-Return ONLY the complete page.tsx file content with:
-1. Metadata export with SEO-optimized title, description, OG tags
-2. All components inline in the same file
-3. Full Tailwind CSS styling
-4. All links pointing to ${input.url}
-5. NO navigation menu or footer links
-6. Conversion-focused landing page layout`,
-    });
-    await updateStepStatusStep(writable, runId, 'create', 'success', {
-      detail: {
-        landingPageLength: blogResult.blogPage.length,
-        targetUrl: input.url,
-      },
-      duration: Date.now() - startTime,
-    });
-
-    // Log complete V0 landing page generation data to MongoDB
-    await logStepDataStep({
-      runId,
-      stepName: 'create',
-      stepData: {
-        campaignDescription: input.campaignDescription,
-        targetUrl: input.url,
-        generatedLandingPage: blogResult.blogPage,
-        model: blogResult.model,
-        brandAssets: {
-          ogImage: ogImageAsset?.blobUrl || scrapeResult.metadata.ogImage,
-          favicon: faviconAsset?.blobUrl || scrapeResult.metadata.favicon,
-          title: scrapeResult.metadata.title,
-          industry: scrapeResult.metadata.industry,
-        },
-        comprehensiveBranding: scrapeResult.branding, // Full Firecrawl branding data used
-        timestamp: Date.now(),
-      },
-    });
-  } catch (error) {
-    await updateStepStatusStep(writable, runId, 'create', 'error', {
-      error: error instanceof Error ? error.message : String(error),
-    });
-    throw error;
-  }
-
-  // Step 6: Render Landing Page HTML
-  await updateStepStatusStep(writable, runId, 'render', 'running');
   let landingPageHtml: string;
   try {
     const startTime = Date.now();
 
-    // Convert TSX to static HTML
-    const renderResult = await renderLandingPageHtmlStep({
-      tsxCode: blogResult.blogPage,
+    // Call Claude to generate complete HTML + CSS
+    const htmlResult = await claudeGenerateHtmlStep({
+      spec: specResult.text,
       brandAssets: {
         title: scrapeResult.metadata.title,
         description: scrapeResult.metadata.description,
         ogImage: ogImageAsset?.blobUrl || scrapeResult.metadata.ogImage,
         favicon: faviconAsset?.blobUrl || scrapeResult.metadata.favicon,
       },
+      generatedImages: generatedImages,
+      targetUrl: input.url,
     });
 
-    landingPageHtml = renderResult.html;
+    landingPageHtml = htmlResult.html;
 
-    await updateStepStatusStep(writable, runId, 'render', 'success', {
+    await updateStepStatusStep(writable, runId, 'generateHtml', 'success', {
       detail: {
         htmlLength: landingPageHtml.length,
+        model: 'claude-opus-4-5-20251101',
+        targetUrl: input.url,
       },
       duration: Date.now() - startTime,
     });
 
-    // Log HTML rendering data to MongoDB
+    // Log HTML generation data to MongoDB
     await logStepDataStep({
       runId,
-      stepName: 'render',
+      stepName: 'generateHtml',
       stepData: {
+        campaignDescription: input.campaignDescription,
+        targetUrl: input.url,
         htmlLength: landingPageHtml.length,
         htmlPreview: landingPageHtml.slice(0, 500),
+        model: 'claude-opus-4-5-20251101',
+        brandAssets: {
+          ogImage: ogImageAsset?.blobUrl || scrapeResult.metadata.ogImage,
+          favicon: faviconAsset?.blobUrl || scrapeResult.metadata.favicon,
+          title: scrapeResult.metadata.title,
+          industry: scrapeResult.metadata.industry,
+        },
+        generatedImagesCount: generatedImages.length,
         timestamp: Date.now(),
       },
     });
   } catch (error) {
-    await updateStepStatusStep(writable, runId, 'render', 'error', {
+    await updateStepStatusStep(writable, runId, 'generateHtml', 'error', {
       error: error instanceof Error ? error.message : String(error),
     });
     throw error;
   }
 
   // Determine the final URL for this landing page
-  const landingPageUrl = `https://blog-agent-nine.vercel.app/landing-${runId}`;
+  const landingPageUrl = `https://blog-agent-nine.vercel.app/landing/${runId}`;
 
   // Step 7: Capture Screenshot (skip for now - we'll capture after deployment)
   await updateStepStatusStep(writable, runId, 'screenshot', 'running');
@@ -734,7 +508,6 @@ Return ONLY the complete page.tsx file content with:
   await closeStreamStep(writable);
 
   return {
-    landingPage: blogResult.blogPage,
     landingPageHtml,
     liveUrl: landingPageUrl,
     spec: specResult.text,

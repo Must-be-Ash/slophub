@@ -15,7 +15,7 @@ go through it and double check if we executed everything as planned
 
 wrun_01KBP6X0GJZXJYY0XVS13TPRMT wrun_01KBP9Q8YCKHXD7W77BYCH33X9 
 
-the workflow doesnt run in prod. I get an error as soon as i start it. Here's what i got:
+the app works great in local developement but the workflow doesnt run in prod. I get an error as soon as i start it. Here's what i got:
   Generation Failed
   Failed to fetch workflow status\
   there was no console logs error. Here's what i got from vercel logs:

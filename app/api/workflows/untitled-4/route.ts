@@ -2,6 +2,9 @@ import { start } from 'workflow/api';
 import { untitled4Workflow } from '@/workflows/untitled-4';
 import { NextResponse } from 'next/server';
 
+// Increase timeout for workflow execution (max 300s on Hobby/Pro, 900s on Enterprise)
+export const maxDuration = 300;
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
