@@ -503,25 +503,46 @@ Return a detailed specification with all sections clearly outlined.`,
   // Determine the final URL for this landing page
   const landingPageUrl = `https://blog-agent-nine.vercel.app/landing/${runId}`;
 
-  // Step 7: Capture Screenshot (skip for now - we'll capture after deployment)
+  // Step 7: Capture Screenshot
   await updateStepStatusStep(writable, runId, 'screenshot', 'running');
   let screenshotUrl: string | undefined;
   try {
     const startTime = Date.now();
 
-    // Skip screenshot for now since the page isn't deployed yet
-    // The screenshot will be captured manually or in a follow-up workflow
+    console.log('[Workflow] Starting screenshot capture for:', landingPageUrl);
+    console.log('[Workflow] SCREENSHOTAPI_TOKEN present:', !!process.env.SCREENSHOTAPI_TOKEN);
+    console.log('[Workflow] BLOB_READ_WRITE_TOKEN present:', !!process.env.BLOB_READ_WRITE_TOKEN);
+
+    // Import and call screenshot step
+    const { screenshotStep } = await import('./steps/screenshot-step');
+    const screenshotResult = await screenshotStep({
+      url: landingPageUrl,
+    });
+
+    screenshotUrl = screenshotResult.screenshotUrl;
+    console.log('[Workflow] ✓ Screenshot captured successfully:', screenshotUrl);
+
     await updateStepStatusStep(writable, runId, 'screenshot', 'success', {
       detail: {
-        skipped: true,
-        reason: 'Screenshot will be captured after page is live',
+        screenshotUrl: screenshotUrl,
+        pageUrl: landingPageUrl,
       },
       duration: Date.now() - startTime,
     });
   } catch (error) {
-    console.error('Screenshot step error:', error);
-    await updateStepStatusStep(writable, runId, 'screenshot', 'error', {
-      error: 'Screenshot skipped',
+    console.error('[Workflow] Screenshot capture failed:', error);
+    console.error('[Workflow] Error details:', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
+    // Don't fail the entire workflow if screenshot fails
+    await updateStepStatusStep(writable, runId, 'screenshot', 'success', {
+      detail: {
+        skipped: true,
+        reason: 'Screenshot failed - will use iframe fallback',
+        error: error instanceof Error ? error.message : String(error),
+      },
     });
   }
 
