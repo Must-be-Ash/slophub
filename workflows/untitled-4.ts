@@ -19,6 +19,7 @@ import { saveToMongoDBStep } from './steps/save-to-mongodb-step';
 import { logStepDataStep } from './steps/log-step-data';
 import { falImageGenerationStep } from './steps/fal-image-generation-step';
 import { addToMicrofrontendsGroupStep } from './steps/add-to-microfrontends-group-step';
+import { verifyMicrofrontendGroupMembershipStep } from './steps/verify-microfrontend-group-membership-step';
 import { registerMicrofrontendStep } from './steps/register-microfrontend-step';
 import { commitAndPushStep } from './steps/commit-and-push-step';
 import { addStepUpdate } from '../lib/workflow-cache';
@@ -43,6 +44,7 @@ const WORKFLOW_STEPS = [
   { id: 'create', label: 'Create Landing Page' },
   { id: 'deploy', label: 'Deploy to Vercel' },
   { id: 'addToGroup', label: 'Add to Microfrontends Group' },
+  { id: 'verifyGroup', label: 'Verify Group Membership' },
   { id: 'register', label: 'Register Microfrontend' },
   { id: 'commit', label: 'Update Parent Application' },
   { id: 'screenshot', label: 'Capture Preview Screenshot' },
@@ -920,6 +922,62 @@ module.exports = nextConfig`,
       error: 'Failed to add to microfrontends group - will continue with manual addition',
     });
     // Don't throw - this is not critical, continue workflow
+  }
+
+  // Step 7.5: Verify Group Membership
+  await updateStepStatusStep(writable, runId, 'verifyGroup', 'running');
+  try {
+    const startTime = Date.now();
+
+    const microfrontendsGroupId = process.env.VERCEL_MICROFRONTENDS_GROUP_ID;
+
+    if (!microfrontendsGroupId || !addedToGroup) {
+      console.warn('Skipping verification - either no group ID or project was not added');
+      await updateStepStatusStep(writable, runId, 'verifyGroup', 'success', {
+        detail: {
+          skipped: true,
+          reason: !microfrontendsGroupId
+            ? 'No microfrontends group ID configured'
+            : 'Project was not added to group in previous step'
+        },
+        duration: Date.now() - startTime,
+      });
+    } else {
+      const verifyResult = await verifyMicrofrontendGroupMembershipStep({
+        projectName: deployResult.projectName,
+        microfrontendsGroupId,
+        maxAttempts: 10,
+        delayMs: 2000,
+      });
+
+      await updateStepStatusStep(writable, runId, 'verifyGroup', 'success', {
+        detail: {
+          verified: verifyResult.verified,
+          attempts: verifyResult.attempts,
+          projectName: deployResult.projectName,
+        },
+        duration: Date.now() - startTime,
+      });
+
+      await logStepDataStep({
+        runId,
+        stepName: 'verifyGroup',
+        stepData: {
+          projectName: deployResult.projectName,
+          microfrontendsGroupId,
+          verified: verifyResult.verified,
+          attempts: verifyResult.attempts,
+          timestamp: Date.now(),
+        },
+      });
+    }
+  } catch (error) {
+    console.error('Failed to verify group membership:', error);
+    await updateStepStatusStep(writable, runId, 'verifyGroup', 'error', {
+      error: error instanceof Error ? error.message : 'Failed to verify group membership',
+    });
+    // This is critical - if we can't verify, we shouldn't proceed with registration
+    throw error;
   }
 
   // Step 8: Register Microfrontend
