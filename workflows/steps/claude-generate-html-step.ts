@@ -23,9 +23,15 @@ export async function claudeGenerateHtmlStep({
 
   const apiKey = process.env.WORKFLOW_ANTHROPIC_API_KEY;
 
+  console.log('[Claude HTML] WORKFLOW_ANTHROPIC_API_KEY present:', !!apiKey);
+  console.log('[Claude HTML] API key length:', apiKey?.length || 0);
+
   if (!apiKey) {
+    console.error('[Claude HTML] ❌ WORKFLOW_ANTHROPIC_API_KEY is not configured!');
     throw new Error('WORKFLOW_ANTHROPIC_API_KEY is not configured');
   }
+
+  console.log('[Claude HTML] ✓ API key validated, initializing Anthropic client');
 
   const anthropic = new Anthropic({
     apiKey: apiKey,
@@ -79,10 +85,12 @@ DESIGN STYLE:
 
 Return ONLY the complete HTML code. No explanations, no markdown code blocks, just the raw HTML starting with <!DOCTYPE html>.`;
 
-  console.log('[Claude HTML] Calling Anthropic API...');
+  console.log('[Claude HTML] Starting Claude Opus 4.5 API call with streaming...');
+  console.log('[Claude HTML] Model: claude-opus-4-5-20251101, Max tokens: 35000');
   const startTime = Date.now();
 
-  const message = await anthropic.messages.create({
+  // Use streaming to avoid 10-minute timeout for long requests
+  const stream = anthropic.messages.stream({
     model: 'claude-opus-4-5-20251101',
     max_tokens: 35000,
     messages: [
@@ -93,14 +101,28 @@ Return ONLY the complete HTML code. No explanations, no markdown code blocks, ju
     ],
   });
 
-  const duration = Date.now() - startTime;
-  console.log(`[Claude HTML] Response received in ${duration}ms`);
+  console.log('[Claude HTML] Stream created, waiting for chunks...');
 
-  // Extract text from response
-  const html = message.content
-    .filter((block) => block.type === 'text')
-    .map((block) => (block as any).text)
-    .join('\n');
+  // Collect streamed text chunks
+  let html = '';
+  let chunkCount = 0;
+  for await (const chunk of stream) {
+    if (chunk.type === 'content_block_delta' && chunk.delta.type === 'text_delta') {
+      html += chunk.delta.text;
+      chunkCount++;
+
+      // Log progress every 50 chunks
+      if (chunkCount % 50 === 0) {
+        const elapsed = ((Date.now() - startTime) / 1000).toFixed(1);
+        console.log(`[Claude HTML] Received ${chunkCount} chunks, ${html.length} bytes (${elapsed}s elapsed)`);
+      }
+    }
+  }
+
+  const duration = Date.now() - startTime;
+  const durationSeconds = (duration / 1000).toFixed(2);
+  console.log(`[Claude HTML] ✓ Stream complete in ${durationSeconds}s`);
+  console.log(`[Claude HTML] Total chunks: ${chunkCount}, Total bytes: ${html.length}`);
 
   // Clean up any markdown code blocks if present
   let cleanHtml = html.trim();
