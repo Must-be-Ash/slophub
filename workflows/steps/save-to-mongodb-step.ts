@@ -11,6 +11,11 @@ export async function saveToMongoDBStep({
     branding?: any;
     campaignDescription: string;
     landingPageSpec: string;
+    referenceImageUrl?: string;
+    generatedImages?: Array<{
+      name: string;
+      blobUrl: string;
+    }>;
     liveUrl?: string;
     deploymentId?: string;
     createdAt: number;

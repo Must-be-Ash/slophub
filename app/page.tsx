@@ -8,6 +8,9 @@ import { ArrowRight, Sparkles } from 'lucide-react';
 export default function Home() {
   const [url, setUrl] = useState('');
   const [campaignDescription, setDescription] = useState('');
+  const [referenceImage, setReferenceImage] = useState<File | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [focused, setFocused] = useState(false);
@@ -35,6 +38,30 @@ export default function Home() {
     return null;
   };
 
+  const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      // Validate file size (max 10MB)
+      if (file.size > 10 * 1024 * 1024) {
+        setError('Image must be less than 10MB');
+        return;
+      }
+      // Validate file type
+      if (!file.type.startsWith('image/')) {
+        setError('Please upload an image file');
+        return;
+      }
+      setReferenceImage(file);
+      setError(null);
+      // Create preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setImagePreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -53,11 +80,40 @@ export default function Home() {
     setLoading(true);
     setError(null);
 
+    let imageUrl: string | undefined;
+
+    // Upload image if provided
+    if (referenceImage) {
+      try {
+        setUploadingImage(true);
+        const formData = new FormData();
+        formData.append('image', referenceImage);
+
+        const uploadResponse = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!uploadResponse.ok) {
+          throw new Error('Failed to upload image');
+        }
+
+        const uploadData = await uploadResponse.json();
+        imageUrl = uploadData.blobUrl;
+      } catch (err) {
+        setError('Failed to upload reference image. Continuing without it...');
+        // Continue without image - don't fail the workflow
+      } finally {
+        setUploadingImage(false);
+      }
+    }
+
+    // Start workflow with optional imageUrl
     try {
       const response = await fetch('/api/workflows/untitled-4', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, campaignDescription }),
+        body: JSON.stringify({ url, campaignDescription, imageUrl }),
       });
 
       if (!response.ok) {
@@ -136,6 +192,9 @@ export default function Home() {
             </div>
 
             <div className="relative">
+              <p className="text-sm text-slate-500 mb-2">
+                Describe who you're targeting and what this campaign is about
+              </p>
               <div
                 className={`
                   relative bg-white rounded-2xl transition-all duration-300
@@ -156,9 +215,44 @@ export default function Home() {
                   disabled={loading}
                 />
               </div>
-              <p className="absolute -bottom-6 left-0 text-xs text-slate-400">
-                Describe who you're targeting and what this campaign is about
-              </p>
+            </div>
+
+            <div className="relative pt-2">
+              <label htmlFor="image" className="block text-sm font-medium text-slate-700 mb-2">
+                Reference Image (Optional)
+              </label>
+              <div className="relative bg-white rounded-2xl shadow-sm shadow-black/5 p-4">
+                <input
+                  type="file"
+                  id="image"
+                  accept="image/*"
+                  onChange={handleImageChange}
+                  className="w-full text-sm text-slate-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-slate-100 file:text-slate-700 hover:file:bg-slate-200 file:transition-colors"
+                  disabled={loading}
+                />
+                {imagePreview && (
+                  <div className="mt-4 flex items-start gap-4">
+                    <img
+                      src={imagePreview}
+                      alt="Preview"
+                      className="w-32 h-32 object-cover rounded-lg border-2 border-slate-200"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setReferenceImage(null);
+                        setImagePreview(null);
+                      }}
+                      className="px-3 py-1.5 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                    >
+                      Remove
+                    </button>
+                  </div>
+                )}
+                <p className="mt-2 text-xs text-slate-400">
+                  Upload a reference image to guide the style of generated assets
+                </p>
+              </div>
             </div>
 
             <button

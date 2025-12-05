@@ -39,6 +39,14 @@ export async function POST(request: Request) {
       );
     }
 
+    // Optional imageUrl validation
+    if (body.imageUrl && typeof body.imageUrl !== 'string') {
+      return NextResponse.json(
+        { error: 'imageUrl must be a string if provided' },
+        { status: 400 }
+      );
+    }
+
     // Start the workflow execution (we'll get runId from the result)
     const run = await start(untitled4Workflow, [body]);
 

@@ -17,6 +17,7 @@ import { deployToVercelStep } from './steps/deploy-to-vercel-step';
 import { uploadAssetsStep } from './steps/upload-assets-step';
 import { saveToMongoDBStep } from './steps/save-to-mongodb-step';
 import { logStepDataStep } from './steps/log-step-data';
+import { falImageGenerationStep } from './steps/fal-image-generation-step';
 import { addStepUpdate } from '../lib/workflow-cache';
 
 // Step update interface for streaming progress
@@ -35,6 +36,7 @@ const WORKFLOW_STEPS = [
   { id: 'scrape', label: 'Scrape Website & Upload Assets' },
   { id: 'search', label: 'Research Campaign Data' },
   { id: 'generate', label: 'Generate Landing Page Spec' },
+  { id: 'images', label: 'Generate Landing Page Images' },
   { id: 'create', label: 'Create Landing Page' },
   { id: 'deploy', label: 'Deploy to Vercel' },
 ];
@@ -99,7 +101,11 @@ async function closeStreamStep(writable: WritableStream<StepUpdate>) {
   await writable.close();
 }
 
-export async function untitled4Workflow(input: { url: string; campaignDescription: string }) {
+export async function untitled4Workflow(input: {
+  url: string;
+  campaignDescription: string;
+  imageUrl?: string;
+}) {
   "use workflow";
 
   // Get workflow metadata to access runId
@@ -309,7 +315,80 @@ Return a detailed specification with all sections clearly outlined.`,
     throw error;
   }
 
-  // Step 4: Create Landing Page
+  // Step 4: Generate Landing Page Images
+  await updateStepStatusStep(writable, runId, 'images', 'running');
+  let generatedImages: { name: string; blobUrl: string }[] = [];
+  try {
+    const startTime = Date.now();
+
+    // Prepare brand image URLs
+    const brandImageUrls: string[] = [];
+    if (scrapeResult.metadata.ogImage) {
+      brandImageUrls.push(scrapeResult.metadata.ogImage);
+    }
+    if (scrapeResult.metadata.favicon) {
+      brandImageUrls.push(scrapeResult.metadata.favicon);
+    }
+
+    // Call Fal image generation
+    const falResult = await falImageGenerationStep({
+      campaignDescription: input.campaignDescription,
+      landingPageSpec: specResult.text,
+      brandInfo: {
+        title: scrapeResult.metadata.title,
+        description: scrapeResult.metadata.description,
+        industry: scrapeResult.metadata.industry,
+        colors: scrapeResult.branding?.colors,
+        personality: scrapeResult.branding?.personality,
+      },
+      referenceImageUrl: input.imageUrl, // User-uploaded reference
+      brandImageUrls,                     // Scraped brand assets
+    });
+
+    // Upload generated images to Vercel Blob
+    const imagesToUpload = falResult.images.map((img, idx) => ({
+      name: `generated-${idx}`,
+      url: img.url,
+    }));
+
+    if (imagesToUpload.length > 0) {
+      const uploadResult = await uploadAssetsStep({ assets: imagesToUpload });
+      generatedImages = uploadResult.assets;
+    }
+
+    await updateStepStatusStep(writable, runId, 'images', 'success', {
+      detail: {
+        imagesGenerated: generatedImages.length,
+        method: falResult.method,
+      },
+      duration: Date.now() - startTime,
+    });
+
+    // Log image generation data
+    await logStepDataStep({
+      runId,
+      stepName: 'images',
+      stepData: {
+        method: falResult.method,
+        referenceImageProvided: !!input.imageUrl,
+        brandImagesUsed: brandImageUrls.length,
+        generatedImages: generatedImages.map(img => ({
+          name: img.name,
+          blobUrl: img.blobUrl,
+        })),
+        timestamp: Date.now(),
+      },
+    });
+  } catch (error) {
+    // Don't fail workflow if image generation fails - continue without generated images
+    console.error('Image generation failed:', error);
+    await updateStepStatusStep(writable, runId, 'images', 'error', {
+      error: 'Image generation failed - continuing with brand assets only',
+    });
+    // Continue workflow - generatedImages will be empty array
+  }
+
+  // Step 5: Create Landing Page
   await updateStepStatusStep(writable, runId, 'create', 'running');
 
   // Prepare brand assets for V0 with Blob URLs (declare outside try for later use)
@@ -335,6 +414,16 @@ Brand Identity from ${scrapeResult.metadata.title}:
 - OG Image URL: ${ogImageAsset?.blobUrl || branding.images?.ogImage || scrapeResult.metadata.ogImage || 'None'}
 - Favicon URL: ${faviconAsset?.blobUrl || branding.images?.favicon || scrapeResult.metadata.favicon || 'None'}
 - Description: ${scrapeResult.metadata.description}
+
+AVAILABLE IMAGES FOR LANDING PAGE:
+- Original Brand Assets:
+  - OG Image: ${ogImageAsset?.blobUrl || scrapeResult.metadata.ogImage || 'None'}
+  - Favicon: ${faviconAsset?.blobUrl || scrapeResult.metadata.favicon || 'None'}
+
+${generatedImages.length > 0 ? `
+- AI-Generated Section Images (use these prominently):
+${generatedImages.map((img) => `  - ${img.name}: ${img.blobUrl}`).join('\n')}
+` : ''}
 
 COMPREHENSIVE BRAND STYLE GUIDE (AI-extracted from website):
 
@@ -403,6 +492,33 @@ ${specResult.text}
 ${brandInfo}
 
 TARGET URL FOR ALL CTAs: ${input.url}
+
+**IMAGE USAGE:**
+${generatedImages.length > 0 ? `
+- You have ${generatedImages.length} AI-generated images specifically created for this landing page
+- Use these images prominently in:
+  - Value propositions section (${generatedImages[0]?.name}: ${generatedImages[0]?.blobUrl})
+  - Features section (${generatedImages[1]?.name}: ${generatedImages[1]?.blobUrl})
+  - Call-to-action section (${generatedImages[2]?.name}: ${generatedImages[2]?.blobUrl})
+- Images are square (1:1) - use in grid layouts, cards, or section backgrounds
+- IMPORTANT: Import and use Next.js Image component from 'next/image':
+  import Image from 'next/image'
+- Example usage:
+  <Image
+    src="${generatedImages[0]?.blobUrl}"
+    alt="Value Proposition"
+    width={500}
+    height={500}
+    className="rounded-lg"
+  />
+- The next.config.js already allows Vercel Blob storage images
+- IMPORTANT: Use these generated images instead of placeholder images
+- DO NOT use regular <img> tags for these images - use Next.js Image component
+` : `
+- Use brand OG image and favicon where appropriate
+- Consider using solid color backgrounds matching brand colors
+- No generated images available - use brand colors creatively
+`}
 
 CRITICAL REQUIREMENTS:
 
@@ -679,6 +795,22 @@ module.exports = {
           exclude: ['node_modules']
         }, null, 2),
       },
+      {
+        file: 'next.config.js',
+        data: `/** @type {import('next').NextConfig} */
+const nextConfig = {
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: '**.public.blob.vercel-storage.com',
+      },
+    ],
+  },
+}
+
+module.exports = nextConfig`,
+      },
     ];
 
     deployResult = await deployToVercelStep({
@@ -734,6 +866,8 @@ module.exports = {
         branding: scrapeResult.branding, // Comprehensive Firecrawl branding data
         campaignDescription: input.campaignDescription,
         landingPageSpec: specResult.text,
+        referenceImageUrl: input.imageUrl,
+        generatedImages,
         liveUrl: deployResult.url,
         deploymentId: deployResult.deploymentId,
         createdAt: Date.now(),
@@ -758,5 +892,7 @@ module.exports = {
     researchResults: searchResult.results,
     citations: searchResult.citations,
     uploadedAssets,
+    generatedImages,
+    referenceImageUrl: input.imageUrl,
   };
 }
