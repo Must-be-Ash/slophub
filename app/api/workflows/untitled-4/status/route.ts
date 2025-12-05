@@ -29,46 +29,59 @@ export async function GET(request: Request) {
       runNotFound = true;
     }
 
-    // If streaming is requested or run not found, check workflow cache
+    // If streaming is requested or run not found, read step status from MongoDB
     if (stream || runNotFound) {
-      const { getStepUpdates } = await import('@/lib/workflow-cache');
-      const steps = getStepUpdates(runId);
+      console.log(`[Status API] Reading step status from MongoDB for ${runId}`);
 
-      console.log(`[Status API] Cached steps for ${runId}: ${steps.length} steps, runNotFound: ${runNotFound}`);
+      // Read step statuses from MongoDB (works across instances)
+      const mongoUri = process.env.MONGODB_URI;
+      let steps: any[] = [];
 
-      // If we have steps in cache, workflow is running
-      if (steps.length > 0) {
-        const hasError = steps.some(s => s.status === 'error');
-        const allComplete = steps.every(s => s.status === 'success' || s.status === 'error');
+      if (mongoUri) {
+        try {
+          const { MongoClient } = await import('mongodb');
+          const client = new MongoClient(mongoUri);
+          await client.connect();
 
-        let status: string;
-        if (hasError) {
-          status = 'failed';
-        } else if (allComplete && steps.length >= 6) { // We have 6 steps total
-          status = 'completed';
-        } else {
-          status = 'running';
+          const db = client.db('blog-agent');
+          const collection = db.collection('workflow_step_status');
+
+          // Get all step statuses for this run, sorted by timestamp
+          steps = await collection
+            .find({ runId })
+            .sort({ timestamp: 1 })
+            .toArray();
+
+          await client.close();
+
+          console.log(`[Status API] Found ${steps.length} step status records in MongoDB`);
+        } catch (dbError) {
+          console.error('[Status API] Failed to read from MongoDB:', dbError);
         }
+      } else {
+        console.warn('[Status API] MONGODB_URI not configured');
+      }
 
-        console.log(`[Status API] Using cached steps - status: ${status}`);
-
+      // If run not found, workflow might be initializing
+      if (runNotFound) {
+        console.log(`[Status API] Workflow not found in getRun(), assuming it's initializing`);
         return NextResponse.json({
           runId,
           steps,
-          status,
-          result: status === 'completed' ? { message: 'Check MongoDB for results' } : null,
+          status: 'running',
+          result: null,
         });
       }
 
-      // No cached steps yet - if run exists, use it
-      if (!runNotFound && run) {
+      // Get workflow status
+      if (run) {
         const status = await run.status;
         let result = null;
         if (status === 'completed') {
           result = await run.returnValue;
         }
 
-        console.log(`[Status API] No cached steps, using run status: ${status}`);
+        console.log(`[Status API] Workflow status: ${status}, steps: ${steps.length}`);
 
         return NextResponse.json({
           runId,
@@ -78,21 +91,8 @@ export async function GET(request: Request) {
         });
       }
 
-      // No run object but runId was provided - workflow might be initializing
-      // Return "running" to avoid false "not found" error
-      if (runNotFound) {
-        console.log(`[Status API] Workflow not found in getRun(), assuming it's initializing`);
-
-        return NextResponse.json({
-          runId,
-          steps: [],
-          status: 'running',
-          result: null,
-        });
-      }
-
-      // Truly not found - no run, no cache, no runNotFound flag
-      console.error(`[Status API] Workflow ${runId} not found anywhere`);
+      // No run object - truly not found
+      console.error(`[Status API] Workflow ${runId} not found`);
       return NextResponse.json(
         { error: 'Workflow not found' },
         { status: 404 }

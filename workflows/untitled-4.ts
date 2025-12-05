@@ -57,9 +57,10 @@ async function initializeStepsStep(
       timestamp: Date.now(),
     };
 
-    // Write to both stream and cache
+    // Write to stream, cache, AND MongoDB
     await writer.write(update);
     addStepUpdate(runId, update);
+    await saveStepStatusToMongoDB(runId, update);
   }
 
   writer.releaseLock();
@@ -86,11 +87,61 @@ async function updateStepStatusStep(
     ...extras,
   };
 
-  // Write to both stream and cache
+  // Write to stream, cache, AND MongoDB
   await writer.write(update);
   addStepUpdate(runId, update);
 
+  // Save to MongoDB for cross-instance access
+  await saveStepStatusToMongoDB(runId, update);
+
   writer.releaseLock();
+}
+
+// Helper to save step status to MongoDB
+async function saveStepStatusToMongoDB(runId: string, update: StepUpdate) {
+  "use step";
+
+  const { MongoClient } = await import('mongodb');
+  const mongoUri = process.env.MONGODB_URI;
+
+  if (!mongoUri) {
+    console.warn('[Workflow] MONGODB_URI not configured, skipping step status save');
+    return;
+  }
+
+  const client = new MongoClient(mongoUri);
+
+  try {
+    await client.connect();
+    const db = client.db('blog-agent');
+    const collection = db.collection('workflow_step_status');
+
+    // Upsert the step status (update if exists, insert if not)
+    await collection.updateOne(
+      { runId, stepId: update.stepId },
+      {
+        $set: {
+          runId,
+          stepId: update.stepId,
+          stepLabel: update.stepLabel,
+          status: update.status,
+          timestamp: update.timestamp,
+          detail: update.detail,
+          error: update.error,
+          duration: update.duration,
+          updatedAt: new Date(),
+        },
+      },
+      { upsert: true }
+    );
+
+    console.log(`[Workflow] Saved step status to MongoDB: ${update.stepId} -> ${update.status}`);
+  } catch (error) {
+    console.error('[Workflow] Failed to save step status to MongoDB:', error);
+    // Don't throw - status save failures shouldn't break the workflow
+  } finally {
+    await client.close();
+  }
 }
 
 // Step function to close the stream
