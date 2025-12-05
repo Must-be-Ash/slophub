@@ -17,6 +17,8 @@ export async function saveToMongoDBStep({
       blobUrl: string;
     }>;
     liveUrl?: string;
+    standaloneUrl?: string; // NEW - standalone deployment URL
+    microfrontendPath?: string; // NEW - e.g., "/landing-abc123"
     deploymentId?: string;
     screenshotUrl?: string;
     createdAt: number;

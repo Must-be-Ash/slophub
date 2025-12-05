@@ -18,6 +18,8 @@ import { uploadAssetsStep } from './steps/upload-assets-step';
 import { saveToMongoDBStep } from './steps/save-to-mongodb-step';
 import { logStepDataStep } from './steps/log-step-data';
 import { falImageGenerationStep } from './steps/fal-image-generation-step';
+import { registerMicrofrontendStep } from './steps/register-microfrontend-step';
+import { commitAndPushStep } from './steps/commit-and-push-step';
 import { addStepUpdate } from '../lib/workflow-cache';
 
 // Step update interface for streaming progress
@@ -39,6 +41,8 @@ const WORKFLOW_STEPS = [
   { id: 'images', label: 'Generate Landing Page Images' },
   { id: 'create', label: 'Create Landing Page' },
   { id: 'deploy', label: 'Deploy to Vercel' },
+  { id: 'register', label: 'Register Microfrontend' },
+  { id: 'commit', label: 'Update Parent Application' },
   { id: 'screenshot', label: 'Capture Preview Screenshot' },
 ];
 
@@ -866,16 +870,104 @@ module.exports = nextConfig`,
     throw error;
   }
 
-  // Step 7: Capture Screenshot
+  // Step 7: Register Microfrontend
+  await updateStepStatusStep(writable, runId, 'register', 'running');
+  let microfrontendPath: string | undefined;
+  try {
+    const startTime = Date.now();
+
+    const registrationResult = await registerMicrofrontendStep({
+      runId,
+      projectName: deployResult.projectName,
+    });
+
+    microfrontendPath = registrationResult.path;
+
+    await updateStepStatusStep(writable, runId, 'register', 'success', {
+      detail: { path: microfrontendPath },
+      duration: Date.now() - startTime,
+    });
+
+    await logStepDataStep({
+      runId,
+      stepName: 'register',
+      stepData: {
+        path: microfrontendPath,
+        projectName: deployResult.projectName,
+        timestamp: Date.now(),
+      },
+    });
+  } catch (error) {
+    console.error('Microfrontend registration failed:', error);
+    await updateStepStatusStep(writable, runId, 'register', 'error', {
+      error: 'Failed to register microfrontend - landing page still accessible via standalone URL',
+    });
+    // Don't throw - continue with standalone URL
+  }
+
+  // Step 8: Commit and Push (Git Approach)
+  await updateStepStatusStep(writable, runId, 'commit', 'running');
+  let parentUpdated = false;
+  try {
+    const startTime = Date.now();
+
+    const commitResult = await commitAndPushStep({
+      runId,
+      route: microfrontendPath || '/unknown',
+    });
+
+    parentUpdated = commitResult.success;
+
+    await updateStepStatusStep(writable, runId, 'commit', 'success', {
+      detail: {
+        commitHash: commitResult.commitHash,
+        pushed: commitResult.success,
+      },
+      duration: Date.now() - startTime,
+    });
+
+    await logStepDataStep({
+      runId,
+      stepName: 'commit',
+      stepData: {
+        success: commitResult.success,
+        commitHash: commitResult.commitHash,
+        route: microfrontendPath,
+        timestamp: Date.now(),
+      },
+    });
+  } catch (error) {
+    console.error('Git commit/push failed:', error);
+    await updateStepStatusStep(writable, runId, 'commit', 'error', {
+      error: 'Parent app update pending - microfrontend will be available after next deployment',
+    });
+    // Don't throw - landing page is still accessible via standalone URL
+  }
+
+  // Step 9: Capture Screenshot
   await updateStepStatusStep(writable, runId, 'screenshot', 'running');
   let screenshotUrl: string | undefined;
   try {
     const startTime = Date.now();
 
+    // Determine which URL to screenshot
+    const parentDomain = 'blog-agent-nine.vercel.app';
+
+    // Wait a bit for parent app deployment if we just pushed
+    // (Vercel typically deploys in 30-60 seconds)
+    if (microfrontendPath && parentUpdated) {
+      // Wait 45 seconds for parent deployment to complete
+      await new Promise(resolve => setTimeout(resolve, 45000));
+    }
+
+    const urlToScreenshot = (microfrontendPath && parentUpdated)
+      ? `https://${parentDomain}${microfrontendPath}`
+      : deployResult.url;
+
     // Call screenshot step
     const { screenshotStep } = await import('./steps/screenshot-step');
     const screenshotResult = await screenshotStep({
-      url: deployResult.url,
+      url: urlToScreenshot,
     });
 
     screenshotUrl = screenshotResult.screenshotUrl;
@@ -883,6 +975,7 @@ module.exports = nextConfig`,
     await updateStepStatusStep(writable, runId, 'screenshot', 'success', {
       detail: {
         screenshotUrl,
+        urlScreenshotted: urlToScreenshot,
       },
       duration: Date.now() - startTime,
     });
@@ -891,7 +984,7 @@ module.exports = nextConfig`,
       runId,
       stepName: 'screenshot',
       stepData: {
-        url: deployResult.url,
+        url: urlToScreenshot,
         screenshotUrl,
         timestamp: Date.now(),
       },
@@ -906,6 +999,11 @@ module.exports = nextConfig`,
   }
 
   // Save to MongoDB for persistence
+  const parentDomain = 'blog-agent-nine.vercel.app';
+  const finalUrl = (microfrontendPath && parentUpdated)
+    ? `https://${parentDomain}${microfrontendPath}`
+    : deployResult.url;
+
   try {
     await saveToMongoDBStep({
       workflowData: {
@@ -924,7 +1022,9 @@ module.exports = nextConfig`,
         landingPageSpec: specResult.text,
         referenceImageUrl: input.imageUrl,
         generatedImages,
-        liveUrl: deployResult.url,
+        liveUrl: finalUrl, // Microfrontend URL if available, else standalone
+        standaloneUrl: deployResult.url, // Always save standalone URL as fallback
+        microfrontendPath, // e.g., "/landing-abc123"
         deploymentId: deployResult.deploymentId,
         screenshotUrl,
         createdAt: Date.now(),
@@ -940,7 +1040,9 @@ module.exports = nextConfig`,
 
   return {
     landingPage: blogResult.blogPage,
-    liveUrl: deployResult.url,
+    liveUrl: finalUrl, // Microfrontend URL if available, else standalone
+    standaloneUrl: deployResult.url, // Always available as fallback
+    microfrontendPath, // e.g., "/landing-abc123"
     deploymentId: deployResult.deploymentId,
     spec: specResult.text,
     scrapeMetadata: scrapeResult.metadata,

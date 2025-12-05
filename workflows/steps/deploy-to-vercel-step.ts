@@ -99,6 +99,7 @@ export async function deployToVercelStep({
   return {
     url: `https://${deploymentUrl}`,
     deploymentId: deployment.id,
+    projectName: projectName, // NEW - needed for microfrontend registration
     readyState,
   };
 }

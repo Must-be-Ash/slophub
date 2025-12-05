@@ -175,6 +175,8 @@ export function WorkflowStatusClient({
   // Success state
   if (status === 'completed' && result) {
     const liveUrl = result.liveUrl;
+    const standaloneUrl = result.standaloneUrl;
+    const microfrontendPath = result.microfrontendPath;
     const screenshotUrl = result.screenshotUrl;
     const hasLiveUrl = liveUrl && typeof liveUrl === 'string';
 
@@ -214,28 +216,88 @@ export function WorkflowStatusClient({
         {hasLiveUrl && (
           <div className="bg-white rounded-2xl shadow-sm shadow-black/5 p-8">
             <h3 className="text-lg font-semibold text-slate-900 mb-6">Your landing page is live</h3>
-            
-            <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl mb-6">
-              <a
-                href={liveUrl}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-slate-600 hover:text-slate-900 font-mono text-sm flex-1 truncate transition-colors"
-              >
-                {liveUrl}
-              </a>
-              <button
-                onClick={() => handleCopy(liveUrl)}
-                className="p-2 hover:bg-slate-200 rounded-lg transition-colors flex-shrink-0"
-                title="Copy URL"
-              >
-                {copied ? (
-                  <Check className="h-4 w-4 text-emerald-500" />
-                ) : (
-                  <Copy className="h-4 w-4 text-slate-400" />
-                )}
-              </button>
-            </div>
+
+            {/* Microfrontend URL (primary) */}
+            {microfrontendPath && (
+              <div className="mb-4">
+                <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Microfrontend URL</p>
+                <div className="flex items-center gap-3 p-4 bg-emerald-50 rounded-xl border border-emerald-200 mb-2">
+                  <a
+                    href={liveUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-emerald-700 hover:text-emerald-900 font-mono text-sm flex-1 truncate transition-colors font-semibold"
+                  >
+                    {liveUrl}
+                  </a>
+                  <button
+                    onClick={() => handleCopy(liveUrl)}
+                    className="p-2 hover:bg-emerald-100 rounded-lg transition-colors flex-shrink-0"
+                    title="Copy URL"
+                  >
+                    {copied ? (
+                      <Check className="h-4 w-4 text-emerald-600" />
+                    ) : (
+                      <Copy className="h-4 w-4 text-emerald-600" />
+                    )}
+                  </button>
+                </div>
+                <p className="text-xs text-slate-500">
+                  Composed under parent application at: <code className="bg-slate-100 px-1 py-0.5 rounded">{microfrontendPath}</code>
+                </p>
+              </div>
+            )}
+
+            {/* Standalone URL (fallback) */}
+            {standaloneUrl && (
+              <details className="mb-6">
+                <summary className="text-xs text-slate-500 uppercase tracking-wide cursor-pointer hover:text-slate-700 mb-2">
+                  Standalone URL (Fallback)
+                </summary>
+                <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl">
+                  <a
+                    href={standaloneUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-slate-600 hover:text-slate-900 font-mono text-sm flex-1 truncate transition-colors"
+                  >
+                    {standaloneUrl}
+                  </a>
+                  <button
+                    onClick={() => handleCopy(standaloneUrl)}
+                    className="p-2 hover:bg-slate-200 rounded-lg transition-colors flex-shrink-0"
+                    title="Copy URL"
+                  >
+                    <Copy className="h-4 w-4 text-slate-400" />
+                  </button>
+                </div>
+              </details>
+            )}
+
+            {/* If no microfrontend, show single URL prominently */}
+            {!microfrontendPath && (
+              <div className="flex items-center gap-3 p-4 bg-slate-50 rounded-xl mb-6">
+                <a
+                  href={liveUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-slate-600 hover:text-slate-900 font-mono text-sm flex-1 truncate transition-colors"
+                >
+                  {liveUrl}
+                </a>
+                <button
+                  onClick={() => handleCopy(liveUrl)}
+                  className="p-2 hover:bg-slate-200 rounded-lg transition-colors flex-shrink-0"
+                  title="Copy URL"
+                >
+                  {copied ? (
+                    <Check className="h-4 w-4 text-emerald-500" />
+                  ) : (
+                    <Copy className="h-4 w-4 text-slate-400" />
+                  )}
+                </button>
+              </div>
+            )}
 
             {/* Preview screenshot */}
             {screenshotUrl ? (
