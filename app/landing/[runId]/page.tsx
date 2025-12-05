@@ -35,21 +35,41 @@ async function getLandingPageData(runId: string) {
 export default async function LandingPage({ params }: PageProps) {
   const { runId } = await params;
 
+  console.log('[Landing Page] Requested runId:', runId);
+
   // Fetch landing page data from MongoDB
   const data = await getLandingPageData(runId);
 
+  console.log('[Landing Page] Data found:', !!data);
+  console.log('[Landing Page] Has HTML:', !!data?.landingPageHtml);
+  console.log('[Landing Page] HTML length:', data?.landingPageHtml?.length || 0);
+
   // If no data found, show 404
   if (!data) {
+    console.log('[Landing Page] No data - returning 404');
     notFound();
   }
 
   // If we have the rendered HTML, display it
   if (data.landingPageHtml) {
+    // Extract just the body content to avoid nested HTML tags
+    const bodyMatch = data.landingPageHtml.match(/<body[^>]*>([\s\S]*?)<\/body>/i);
+    const bodyContent = bodyMatch ? bodyMatch[1] : data.landingPageHtml;
+
+    // Extract styles from head
+    const styleMatch = data.landingPageHtml.match(/<style[^>]*>([\s\S]*?)<\/style>/gi);
+    const styles = styleMatch ? styleMatch.join('\n') : '';
+
     return (
-      <div
-        dangerouslySetInnerHTML={{ __html: data.landingPageHtml }}
-        suppressHydrationWarning
-      />
+      <>
+        {styles && (
+          <div dangerouslySetInnerHTML={{ __html: styles }} />
+        )}
+        <div
+          dangerouslySetInnerHTML={{ __html: bodyContent }}
+          suppressHydrationWarning
+        />
+      </>
     );
   }
 
