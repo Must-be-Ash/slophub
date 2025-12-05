@@ -27,9 +27,8 @@ Blog Agent is an AI-powered landing page generator that creates conversion-focus
 │  Step 2: Research Campaign Data                                 │
 │  Step 3: Generate Landing Page Spec                             │
 │  Step 4: Generate Landing Page Images                           │
-│  Step 5: Create Landing Page                                    │
-│  Step 6: Render Landing Page HTML                               │
-│  Step 7: Capture Preview Screenshot                             │
+│  Step 5: Generate HTML with Claude Opus 4.5                     │
+│  Step 6: Capture Preview Screenshot                             │
 │                                                                   │
 └────────────────────────┬────────────────────────────────────────┘
                          │
@@ -41,7 +40,7 @@ Blog Agent is an AI-powered landing page generator that creates conversion-focus
                          │
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
-│              Dynamic Route: /landing-[runId]                     │
+│              Dynamic Route: /landing/[runId]                     │
 │         (Fetches & Renders HTML from MongoDB)                   │
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -177,70 +176,59 @@ Blog Agent is an AI-powered landing page generator that creates conversion-focus
 
 ---
 
-### Step 5: Create Landing Page
+### Step 5: Generate HTML with Claude Opus 4.5
 
-**File:** `workflows/steps/create-chat-step.ts`
+**File:** `workflows/steps/claude-generate-html-step.ts`
 
-**Purpose:** Generate complete Next.js landing page code
+**Purpose:** Generate complete, standalone HTML landing page with inline CSS
 
 **Process:**
-1. Sends comprehensive prompt to V0.dev
-2. Includes:
-   - Landing page spec
-   - Generated image URLs
-   - Brand assets (OG image, favicon)
-   - Target URL for CTAs
-3. V0 generates production-ready TSX code
+1. Calls Anthropic API with Claude Opus 4.5 model
+2. Provides comprehensive prompt including:
+   - Landing page specification from Step 3
+   - Brand assets (title, description, OG image, favicon)
+   - Generated images from Step 4 with blob URLs
+   - Target URL for all CTAs
+3. Claude generates:
+   - Complete HTML document starting with `<!DOCTYPE html>`
+   - All CSS inline in `<style>` tag in `<head>`
+   - Modern, responsive design with Tailwind-style utility classes
+   - Conversion-focused layout with clear visual hierarchy
+   - Proper SEO meta tags (title, description, og:tags)
+   - All images strategically placed using generated blob URLs
+   - All buttons/CTAs linking to target URL
+4. Cleans up any markdown code blocks if present
+5. Validates HTML structure
+
+**AI Model:** Claude Opus 4.5 (`claude-opus-4-5-20251101`) via Anthropic API
+
+**Key Features:**
+- **Max Tokens:** 35,000 (allows complete page generation)
+- **No external dependencies:** Everything inline (CSS, images via URLs)
+- **No JavaScript:** Pure HTML and CSS only
+- **Mobile-first:** Fully responsive design
+- **Conversion-optimized:** Clear CTAs, visual hierarchy, compelling copy
 
 **External APIs:**
-- V0.dev API (`https://api.v0.dev/api/generate`)
-
-**Requirements:**
-- All components inline in single file
-- Full Tailwind CSS styling
-- All links point to target URL
-- No navigation menu or footer links
-- Conversion-focused layout
+- Anthropic API (`https://api.anthropic.com/v1/messages`)
 
 **Output:**
 ```typescript
 {
-  blogPage: string;  // Complete TSX code
-  model: string;     // V0 model used
+  html: string;  // Complete HTML document (<!DOCTYPE html>...)
 }
 ```
 
----
-
-### Step 6: Render Landing Page HTML
-
-**File:** `workflows/steps/render-landing-page-html-step.ts`
-
-**Purpose:** Convert TSX to standalone HTML
-
-**Process:**
-1. Takes TSX code from Step 5
-2. Uses GPT-4o to convert to static HTML:
-   - Extracts Tailwind classes → inline `<style>` tag
-   - Converts React components → plain HTML
-   - Removes JSX/React syntax
-   - Adds complete `<!DOCTYPE html>` structure
-   - Includes SEO meta tags
-   - Makes all styles inline
-3. Cleans up markdown code blocks if present
-
-**AI Model:** GPT-4o via OpenAI API
-
-**Output:**
-```typescript
-{
-  html: string;  // Self-contained HTML document
-}
-```
+**Prompt Includes:**
+- Landing page specification from Step 3
+- Brand information (title, description, assets)
+- Generated image URLs with blob storage links
+- Target URL for CTAs
+- Design requirements (responsive, SEO, inline CSS, no JavaScript)
 
 ---
 
-### Step 7: Capture Preview Screenshot
+### Step 6: Capture Preview Screenshot
 
 **File:** `workflows/steps/screenshot-step.ts`
 
@@ -318,7 +306,7 @@ Blog Agent is an AI-powered landing page generator that creates conversion-focus
       "blobUrl": "https://blob.vercel-storage.com/..."
     }
   ],
-  "liveUrl": "https://blog-agent-nine.vercel.app/landing-wrun_...",
+  "liveUrl": "https://blog-agent-nine.vercel.app/landing/wrun_...",
   "screenshotUrl": null,
   "createdAt": 1764906418901
 }
@@ -329,7 +317,7 @@ Blog Agent is an AI-powered landing page generator that creates conversion-focus
 ```json
 {
   "runId": "wrun_01KBP9Q8YCKHXD7W77BYCH33X9",
-  "liveUrl": "https://blog-agent-nine.vercel.app/landing-wrun_01KBP9Q8YCKHXD7W77BYCH33X9"
+  "liveUrl": "https://blog-agent-nine.vercel.app/landing/wrun_01KBP9Q8YCKHXD7W77BYCH33X9"
 }
 ```
 
@@ -374,7 +362,7 @@ curl -X POST https://blog-agent-nine.vercel.app/api/workflows/untitled-4 \
 
 ### 2. Render Landing Page
 
-**GET** `/landing-[runId]`
+**GET** `/landing/[runId]`
 
 **Description:** Displays generated landing page
 
@@ -383,12 +371,13 @@ curl -X POST https://blog-agent-nine.vercel.app/api/workflows/untitled-4 \
 
 **Process:**
 1. Fetches workflow data from MongoDB
-2. Renders HTML using `dangerouslySetInnerHTML`
-3. Returns 404 if not found
+2. Extracts body content and styles from HTML
+3. Renders using `dangerouslySetInnerHTML`
+4. Returns 404 if not found
 
 **Example:**
 ```
-https://blog-agent-nine.vercel.app/landing-wrun_01KBP9Q8YCKHXD7W77BYCH33X9
+https://blog-agent-nine.vercel.app/landing/wrun_01KBP9Q8YCKHXD7W77BYCH33X9
 ```
 
 ---
@@ -398,7 +387,10 @@ https://blog-agent-nine.vercel.app/landing-wrun_01KBP9Q8YCKHXD7W77BYCH33X9
 ### Required
 
 ```env
-# OpenAI API Key (for GPT-4o)
+# Anthropic API Key (for Claude Opus 4.5)
+WORKFLOW_ANTHROPIC_API_KEY=sk-ant-...
+
+# OpenAI API Key (for GPT-4o - spec generation)
 OPENAI_API_KEY=sk-...
 
 # Firecrawl API Key
@@ -406,9 +398,6 @@ FIRECRAWL_API_KEY=fc-...
 
 # Perplexity API Key
 PERPLEXITY_API_KEY=pplx-...
-
-# V0.dev API Key
-V0_API_KEY=v0-...
 
 # Fal.ai API Key
 FAL_KEY=...
@@ -449,12 +438,13 @@ VERCEL_TOKEN=...
 - **Purpose:** AI text generation
 - **API:** OpenAI Chat Completions
 - **Model:** `gpt-4o`
-- **Used In:** Steps 3 (Spec), 6 (HTML Rendering)
+- **Used In:** Step 3 (Landing Page Spec Generation)
 
-### 4. V0.dev (Vercel)
-- **Purpose:** Landing page code generation
-- **API:** `https://api.v0.dev/api/generate`
-- **Used In:** Step 5 (Create Landing Page)
+### 4. Anthropic
+- **Purpose:** HTML landing page generation
+- **API:** `https://api.anthropic.com/v1/messages`
+- **Model:** `claude-opus-4-5-20251101`
+- **Used In:** Step 5 (Generate HTML with Claude Opus 4.5)
 
 ### 5. Fal.ai
 - **Purpose:** AI image generation
@@ -507,8 +497,9 @@ blog-agent/
 │   │   └── workflows/
 │   │       └── untitled-4/
 │   │           └── route.ts          # API endpoint
-│   └── landing-[runId]/
-│       └── page.tsx                  # Dynamic landing page route
+│   └── landing/
+│       └── [runId]/
+│           └── page.tsx              # Dynamic landing page route
 │
 ├── workflows/
 │   ├── untitled-4.ts                 # Main workflow orchestrator
@@ -517,9 +508,8 @@ blog-agent/
 │       ├── search-step.ts            # Step 2: Research
 │       ├── generate-text-step.ts     # Step 3: Spec generation
 │       ├── fal-image-generation-step.ts  # Step 4: Image gen
-│       ├── create-chat-step.ts       # Step 5: Page creation
-│       ├── render-landing-page-html-step.ts  # Step 6: HTML render
-│       ├── screenshot-step.ts        # Step 7: Screenshot
+│       ├── claude-generate-html-step.ts  # Step 5: HTML generation
+│       ├── screenshot-step.ts        # Step 6: Screenshot
 │       ├── upload-assets-step.ts     # Helper: Asset upload
 │       ├── save-to-mongodb-step.ts   # Helper: Data storage
 │       └── log-step-data.ts          # Helper: Step logging
@@ -550,18 +540,16 @@ blog-agent/
 │ ↓ ~6s                                                            │
 │ Step 4: Fal.ai generates 3 images (15-20s)                      │
 │ ↓ ~18s                                                           │
-│ Step 5: V0 creates landing page (10-15s)                        │
-│ ↓ ~12s                                                           │
-│ Step 6: GPT-4o renders HTML (5-8s)                              │
-│ ↓ ~6s                                                            │
-│ Step 7: Screenshot (skipped) (0s)                               │
+│ Step 5: Claude Opus 4.5 generates HTML (8-12s)                  │
+│ ↓ ~10s                                                           │
+│ Step 6: Screenshot (skipped) (0s)                               │
 │ ↓ ~100ms                                                         │
 │ MongoDB save & workflow complete                                │
 │ ↓ instant                                                        │
-│ Landing page live at /landing-{runId}                           │
+│ Landing page live at /landing/[runId]                           │
 └──────────────────────────────────────────────────────────────────┘
 
-Total: ~60-80 seconds
+Total: ~50-70 seconds
 ```
 
 ---
@@ -639,137 +627,25 @@ console.log('[WORKFLOW] Step started', { timestamp: Date.now() });
 console.log('[WORKFLOW] Step completed', { duration, result });
 ```
 
----
+## Support & Documentation
+
+**Vercel Workflow Docs:** `/Users/ashnouruzi/workflow-docs/`
+**Quick Reference:** `WORKFLOW_QUICK_REFERENCE.md`
+**Examples Analysis:** `WORKFLOW_EXAMPLES_ANALYSIS.md`
+**Project Instructions:** `CLAUDE.md`
 
 ## Best Practices
 
 ### Adding New Steps
-1. Create step file in `workflows/steps/`
-2. Use `"use step"` directive
-3. Add to `WORKFLOW_STEPS` array
-4. Import in `untitled-4.ts`
-5. Call in workflow sequence
-6. Update progress tracking
+1. Create a step file in `workflows/steps/`.
+2. Add the `"use step"` directive.
+3. Add your step to the `WORKFLOW_STEPS` array.
+4. Import the step in `untitled-4.ts`.
+5. Call the step in the workflow sequence.
+6. Update progress tracking.
 
 ### Modifying Existing Steps
-1. Read step file first
-2. Maintain input/output interface
-3. Test retry behavior
-4. Update MongoDB schema if needed
-
-### Testing Failures
-Simulate random failures for testing:
-
-```typescript
-async function myStep() {
-  "use step";
-
-  // 30% failure rate for testing
-  if (Math.random() < 0.3) {
-    throw new Error('Simulated failure');
-  }
-
-  // actual logic
-}
-```
-
----
-
-## Performance Optimization
-
-### Parallel Execution
-Where possible, steps run in parallel:
-
-```typescript
-const [result1, result2] = await Promise.all([
-  step1(),
-  step2()
-]);
-```
-
-### Caching
-- Workflow state cached in memory
-- MongoDB queries optimized
-- Blob storage uses CDN
-
-### Cost Optimization
-- Use appropriate AI models (GPT-4o only where needed)
-- Compress images before upload
-- Efficient MongoDB queries
-
----
-
-## Security
-
-### API Keys
-- All sensitive keys in environment variables
-- Never committed to git
-- Different keys for dev/production
-
-### Input Validation
-- URL validation before processing
-- Sanitize campaign descriptions
-- Rate limiting on API endpoints
-
-### MongoDB Security
-- Connection string encrypted
-- Read/write permissions scoped
-- Regular backups
-
----
-
-## Future Enhancements
-
-### Planned Features
-- [ ] Screenshot capture implementation
-- [ ] A/B testing support
-- [ ] Custom branding themes
-- [ ] Analytics integration
-- [ ] Multi-language support
-- [ ] Template library
-
-### Potential Optimizations
-- [ ] Parallel image generation
-- [ ] Incremental static regeneration
-- [ ] Edge caching for landing pages
-- [ ] Webhook notifications on completion
-
----
-
-## Troubleshooting
-
-### Common Issues
-
-**Issue:** "OPENAI_API_KEY is not configured"
-- **Solution:** Add API key to `.env.local`
-
-**Issue:** Workflow stuck on a step
-- **Solution:** Check MongoDB logs, verify external API status
-
-**Issue:** Landing page not rendering
-- **Solution:** Check MongoDB for `landingPageHtml` field
-
-**Issue:** Images not loading
-- **Solution:** Verify Vercel Blob Storage token, check CORS
-
-**Issue:** Build error with imports
-- **Solution:** Ensure all dependencies installed: `pnpm install`
-
----
-
-## Support & Documentation
-
-- **Vercel Workflow Docs:** `/Users/ashnouruzi/workflow-docs/`
-- **Quick Reference:** `WORKFLOW_QUICK_REFERENCE.md`
-- **Examples Analysis:** `WORKFLOW_EXAMPLES_ANALYSIS.md`
-- **Project Instructions:** `CLAUDE.md`
-
----
-
-## Version History
-
-- **v1.0.0** - Initial release with standalone deployments
-- **v2.0.0** - Migrated to dynamic routes (current)
-- **v2.1.0** - Added HTML rendering step
-
-Last Updated: December 4, 2025
+1. Review the step file first.
+2. Maintain the input/output interface.
+3. Test the retry behavior.
+4. Update the MongoDB schema if needed.
