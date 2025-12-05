@@ -305,68 +305,53 @@ export function WorkflowStatusClient({
               </div>
             )}
 
-            {/* Preview screenshot or iframe */}
-            {screenshotUrl ? (
-              <div className="border border-slate-200 rounded-xl overflow-hidden mb-6">
-                <div className="bg-slate-100 px-4 py-2 flex items-center gap-2 border-b border-slate-200">
-                  <div className="flex gap-1.5">
-                    <div className="h-3 w-3 rounded-full bg-slate-300" />
-                    <div className="h-3 w-3 rounded-full bg-slate-300" />
-                    <div className="h-3 w-3 rounded-full bg-slate-300" />
-                  </div>
-                  <div className="flex-1 mx-4">
-                    <div className="bg-white rounded-md px-3 py-1 text-xs text-slate-400 font-mono truncate">
-                      {liveUrl}
-                    </div>
+            {/* Live Preview (iframe primary, screenshot as optional view) */}
+            <div className="border border-slate-200 rounded-xl overflow-hidden mb-6">
+              <div className="bg-slate-100 px-4 py-2 flex items-center gap-2 border-b border-slate-200">
+                <div className="flex gap-1.5">
+                  <div className="h-3 w-3 rounded-full bg-slate-300" />
+                  <div className="h-3 w-3 rounded-full bg-slate-300" />
+                  <div className="h-3 w-3 rounded-full bg-slate-300" />
+                </div>
+                <div className="flex-1 mx-4">
+                  <div className="bg-white rounded-md px-3 py-1 text-xs text-slate-400 font-mono truncate">
+                    {liveUrl}
                   </div>
                 </div>
-                <div className="relative bg-slate-50 p-4">
+                {screenshotUrl && (
                   <a
-                    href={liveUrl}
+                    href={screenshotUrl}
                     target="_blank"
                     rel="noopener noreferrer"
-                    className="block hover:opacity-95 transition-opacity cursor-pointer"
+                    className="text-xs text-slate-500 hover:text-slate-700 underline"
                   >
-                    <Image
-                      src={screenshotUrl}
-                      alt="Landing Page Preview"
-                      width={1280}
-                      height={720}
-                      className="w-full h-auto border border-slate-200 rounded-lg"
-                    />
+                    View Screenshot
                   </a>
-                  <p className="mt-3 text-xs text-slate-500 text-center">
-                    Click screenshot to open live site in new tab
-                  </p>
-                </div>
+                )}
               </div>
-            ) : (
-              <div className="border border-slate-200 rounded-xl overflow-hidden mb-6">
-                <div className="bg-slate-100 px-4 py-2 flex items-center gap-2 border-b border-slate-200">
-                  <div className="flex gap-1.5">
-                    <div className="h-3 w-3 rounded-full bg-slate-300" />
-                    <div className="h-3 w-3 rounded-full bg-slate-300" />
-                    <div className="h-3 w-3 rounded-full bg-slate-300" />
-                  </div>
-                  <div className="flex-1 mx-4">
-                    <div className="bg-white rounded-md px-3 py-1 text-xs text-slate-400 font-mono truncate">
-                      {liveUrl}
-                    </div>
-                  </div>
-                </div>
-                <div className="relative bg-white">
-                  <iframe
-                    src={liveUrl}
-                    className="w-full h-[600px] border-0"
-                    title="Landing Page Preview"
-                    sandbox="allow-scripts allow-same-origin"
-                  />
-                  <p className="px-4 py-3 text-xs text-slate-500 text-center bg-slate-50 border-t border-slate-200">
-                    Live preview (screenshot unavailable)
-                  </p>
-                </div>
+              <div className="relative bg-white">
+                <iframe
+                  src={liveUrl}
+                  className="w-full h-[700px] border-0"
+                  title="Landing Page Preview"
+                  sandbox="allow-scripts allow-same-origin"
+                />
               </div>
-            )}
+              <div className="px-4 py-3 bg-slate-50 border-t border-slate-200 flex items-center justify-between">
+                <p className="text-xs text-slate-500">
+                  Live interactive preview
+                </p>
+                <a
+                  href={liveUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-slate-600 hover:text-slate-900 font-medium flex items-center gap-1 transition-colors"
+                >
+                  Open in new tab
+                  <ExternalLink className="h-3 w-3" />
+                </a>
+              </div>
+            </div>
 
             <div className="flex flex-col sm:flex-row gap-3">
               <a

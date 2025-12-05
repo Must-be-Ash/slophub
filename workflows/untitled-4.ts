@@ -513,6 +513,10 @@ Return a detailed specification with all sections clearly outlined.`,
     console.log('[Workflow] SCREENSHOTAPI_TOKEN present:', !!process.env.SCREENSHOTAPI_TOKEN);
     console.log('[Workflow] BLOB_READ_WRITE_TOKEN present:', !!process.env.BLOB_READ_WRITE_TOKEN);
 
+    // Wait 3 seconds to ensure the page is available (avoid race condition)
+    console.log('[Workflow] Waiting 3 seconds for page to be fully available...');
+    await new Promise(resolve => setTimeout(resolve, 3000));
+
     // Import and call screenshot step
     const { screenshotStep } = await import('./steps/screenshot-step');
     const screenshotResult = await screenshotStep({

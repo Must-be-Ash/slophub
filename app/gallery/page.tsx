@@ -149,33 +149,53 @@ export default function GalleryPage() {
                   href={`/landing/${workflow.runId}`}
                   className="group bg-white rounded-2xl shadow-sm shadow-black/5 overflow-hidden hover:shadow-md hover:shadow-black/10 transition-all duration-200 hover:scale-[1.02]"
                 >
-                  {/* Screenshot/Preview */}
+                  {/* Screenshot/Preview with iframe fallback */}
                   <div className="relative aspect-video bg-slate-100 overflow-hidden">
                     {workflow.screenshotUrl ? (
-                      <Image
-                        src={workflow.screenshotUrl}
-                        alt={workflow.brandAssets?.title || 'Landing page'}
-                        fill
-                        className="object-cover object-top"
-                      />
-                    ) : workflow.generatedImages && workflow.generatedImages.length > 0 ? (
-                      <Image
-                        src={workflow.generatedImages[0].blobUrl}
-                        alt={workflow.brandAssets?.title || 'Landing page'}
-                        fill
-                        className="object-cover"
-                      />
-                    ) : (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="h-16 w-16 rounded-2xl bg-slate-200 flex items-center justify-center">
-                          <Globe className="h-8 w-8 text-slate-400" />
+                      <>
+                        <Image
+                          src={workflow.screenshotUrl}
+                          alt={workflow.brandAssets?.title || 'Landing page'}
+                          fill
+                          className="object-cover object-top"
+                        />
+                        {/* Overlay on hover */}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
+                          <ExternalLink className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
                         </div>
-                      </div>
+                      </>
+                    ) : workflow.generatedImages && workflow.generatedImages.length > 0 ? (
+                      <>
+                        <Image
+                          src={workflow.generatedImages[0].blobUrl}
+                          alt={workflow.brandAssets?.title || 'Landing page'}
+                          fill
+                          className="object-cover"
+                        />
+                        {/* Overlay on hover */}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
+                          <ExternalLink className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                        </div>
+                      </>
+                    ) : (
+                      <>
+                        {/* Iframe preview for cards without screenshot */}
+                        <iframe
+                          src={workflow.liveUrl}
+                          className="absolute inset-0 w-full h-full border-0 pointer-events-none scale-[0.5] origin-top-left"
+                          title={workflow.brandAssets?.title || 'Landing page preview'}
+                          sandbox="allow-scripts allow-same-origin"
+                          style={{
+                            width: '200%',
+                            height: '200%',
+                          }}
+                        />
+                        {/* Overlay on hover */}
+                        <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
+                          <ExternalLink className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
+                        </div>
+                      </>
                     )}
-                    {/* Overlay on hover */}
-                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/20 transition-colors duration-200 flex items-center justify-center">
-                      <ExternalLink className="h-8 w-8 text-white opacity-0 group-hover:opacity-100 transition-opacity duration-200" />
-                    </div>
                   </div>
 
                   {/* Content */}

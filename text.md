@@ -8,6 +8,11 @@ An open source protocol that leverages the 402 payment request HTTP status code.
 It lets you monetize your endpoints with micro payments (no transaction fees) and pay-per-use. Because it happens over HTTP and the endpoints are pay gated there’s no need for api keys making it perfect for Ai agents to access api tools and services without facing account signups 
 
 
+///////
+https://www.thaiaway.com/
+
+I want to advertise to families to come to our restaurant for Christmas. We have a Christmas special meal perfect for groups.
+
 ////////
 
 this was the plan we set out to implement /Users/ashnouruzi/blog-agent/plan.md
