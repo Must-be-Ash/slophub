@@ -37,7 +37,7 @@ const WORKFLOW_STEPS = [
   { id: 'generate', label: 'Generate Landing Page Spec' },
   { id: 'images', label: 'Generate Landing Page Images' },
   { id: 'generateHtml', label: 'Generate HTML with Claude Opus 4.5' },
-  { id: 'screenshot', label: 'Capture Preview Screenshot' },
+  { id: 'screenshot', label: 'Capture Preview Screenshot (Optional)' },
 ];
 
 // Step function to initialize all steps as pending
