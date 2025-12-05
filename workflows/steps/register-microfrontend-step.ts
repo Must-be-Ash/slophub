@@ -1,14 +1,41 @@
 import { readFile, writeFile } from 'fs/promises';
 import { join } from 'path';
 
+interface PathGroup {
+  group?: string;
+  flag?: string;
+  paths: string[];
+}
+
+interface ChildApplication {
+  packageName?: string;
+  routing: PathGroup[];
+  assetPrefix?: string;
+  development?: {
+    local?: number | string;
+    task?: string;
+    fallback?: string;
+  };
+}
+
+interface DefaultApplication {
+  packageName?: string;
+  development: {
+    local?: number | string;
+    task?: string;
+    fallback: string;
+  };
+}
+
 interface MicrofrontendsConfig {
   $schema: string;
+  version?: string;
   applications: {
-    [key: string]: {
-      paths: {
-        [path: string]: string;
-      };
-    };
+    [projectName: string]: DefaultApplication | ChildApplication;
+  };
+  options?: {
+    disableOverrides?: boolean;
+    localProxyPort?: number;
   };
 }
 
@@ -29,13 +56,23 @@ export async function registerMicrofrontendStep({
     const configContent = await readFile(configPath, 'utf-8');
     const config: MicrofrontendsConfig = JSON.parse(configContent);
 
-    // Ensure blog-agent application exists
+    // Ensure blog-agent (default application) has correct structure
     if (!config.applications['blog-agent']) {
-      config.applications['blog-agent'] = { paths: {} };
+      config.applications['blog-agent'] = {
+        development: {
+          fallback: 'blog-agent-nine.vercel.app',
+        },
+      };
     }
 
-    // Add new route
-    config.applications['blog-agent'].paths[route] = projectName;
+    // Add child application (landing page) with routing
+    config.applications[projectName] = {
+      routing: [
+        {
+          paths: [route],
+        },
+      ],
+    };
 
     // Write updated config
     await writeFile(configPath, JSON.stringify(config, null, 2), 'utf-8');
