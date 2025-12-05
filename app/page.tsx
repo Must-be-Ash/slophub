@@ -65,14 +65,21 @@ export default function Home() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    console.log('[Form Submit] Starting submission');
+    console.log('[Form Submit] URL:', url);
+    console.log('[Form Submit] Campaign description length:', campaignDescription.length);
+    console.log('[Form Submit] Reference image:', !!referenceImage, referenceImage?.name);
+
     const urlError = validateUrl(url);
     if (urlError) {
+      console.error('[Form Submit] URL validation failed:', urlError);
       setError(urlError);
       return;
     }
 
     const campaignError = validateCampaign(campaignDescription);
     if (campaignError) {
+      console.error('[Form Submit] Campaign validation failed:', campaignError);
       setError(campaignError);
       return;
     }
@@ -84,28 +91,38 @@ export default function Home() {
 
     // Upload image if provided
     if (referenceImage) {
+      console.log('[Upload] Starting image upload:', referenceImage.name, referenceImage.size, 'bytes');
       try {
         setUploadingImage(true);
         const formData = new FormData();
         formData.append('image', referenceImage);
 
+        console.log('[Upload] Sending POST to /api/upload');
         const uploadResponse = await fetch('/api/upload', {
           method: 'POST',
           body: formData,
         });
 
+        console.log('[Upload] Response status:', uploadResponse.status);
+
         if (!uploadResponse.ok) {
-          throw new Error('Failed to upload image');
+          const errorData = await uploadResponse.json();
+          console.error('[Upload] Upload failed:', errorData);
+          throw new Error(errorData.error || 'Failed to upload image');
         }
 
         const uploadData = await uploadResponse.json();
         imageUrl = uploadData.blobUrl;
+        console.log('[Upload] ✓ Upload successful:', imageUrl);
       } catch (err) {
+        console.error('[Upload] Upload error:', err);
         setError('Failed to upload reference image. Continuing without it...');
         // Continue without image - don't fail the workflow
       } finally {
         setUploadingImage(false);
       }
+    } else {
+      console.log('[Upload] No reference image provided, skipping upload');
     }
 
     // Start workflow with optional imageUrl

@@ -13,8 +13,9 @@ export default async function WorkflowPage({
   // Determine base URL for server-side fetch
   const protocol = process.env.NODE_ENV === 'production' ? 'https' : 'http';
   const baseUrl = process.env.NEXT_PUBLIC_URL ||
-                  process.env.VERCEL_URL ? `${protocol}://${process.env.VERCEL_URL}` :
-                  'http://localhost:3000';
+                  (process.env.VERCEL_URL ? `${protocol}://${process.env.VERCEL_URL}` : 'http://localhost:3000');
+
+  console.log('[Workflow Page] Base URL:', baseUrl, 'RunID:', runId);
 
   let initialData;
   try {
