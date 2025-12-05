@@ -2,8 +2,9 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import Link from 'next/link';
 import { TextShimmer } from '@/components/ui/text-shimmer';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Sparkles, Grid3x3 } from 'lucide-react';
 
 export default function Home() {
   const [url, setUrl] = useState('');
@@ -149,14 +150,27 @@ export default function Home() {
   return (
     <main className="min-h-screen bg-[#fafafa] flex flex-col">
       {/* Subtle grid pattern background */}
-      <div 
+      <div
         className="fixed inset-0 pointer-events-none"
         style={{
           backgroundImage: `radial-gradient(circle at 1px 1px, rgb(0 0 0 / 0.03) 1px, transparent 0)`,
           backgroundSize: '24px 24px',
         }}
       />
-      
+
+      {/* Header */}
+      <header className="relative py-4 px-6">
+        <div className="max-w-7xl mx-auto flex justify-end">
+          <Link
+            href="/gallery"
+            className="inline-flex items-center gap-2 px-4 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-white rounded-xl transition-all"
+          >
+            <Grid3x3 className="h-4 w-4" />
+            Gallery
+          </Link>
+        </div>
+      </header>
+
       {/* Main content */}
       <div className="flex-1 flex items-center justify-center p-6 relative">
         <div className="w-full max-w-xl">

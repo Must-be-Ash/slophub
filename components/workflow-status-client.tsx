@@ -107,13 +107,19 @@ export function WorkflowStatusClient({
             </div>
           )}
 
-          <div className="mt-8 pt-6 border-t border-slate-100">
+          <div className="mt-8 pt-6 border-t border-slate-100 flex gap-3">
             <button
               onClick={() => router.push('/')}
               className="px-5 py-3 bg-black text-white font-medium rounded-xl hover:bg-slate-800 active:scale-[0.98] transition-all flex items-center gap-2"
             >
               Try Again
               <ArrowRight className="h-4 w-4" />
+            </button>
+            <button
+              onClick={() => router.push('/gallery')}
+              className="px-5 py-3 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 active:scale-[0.98] transition-all"
+            >
+              View Gallery
             </button>
           </div>
         </div>
@@ -362,7 +368,7 @@ export function WorkflowStatusClient({
               </div>
             )}
 
-            <div className="flex gap-3">
+            <div className="flex flex-col sm:flex-row gap-3">
               <a
                 href={liveUrl}
                 target="_blank"
@@ -373,10 +379,16 @@ export function WorkflowStatusClient({
                 <ExternalLink className="h-4 w-4" />
               </a>
               <button
+                onClick={() => router.push('/gallery')}
+                className="py-3 px-5 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 active:scale-[0.98] transition-all"
+              >
+                View Gallery
+              </button>
+              <button
                 onClick={() => router.push('/')}
                 className="py-3 px-5 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 active:scale-[0.98] transition-all"
               >
-                Generate Another Landing Page
+                Create Another
               </button>
             </div>
           </div>
@@ -389,13 +401,21 @@ export function WorkflowStatusClient({
             <pre className="whitespace-pre-wrap text-sm bg-slate-50 p-4 rounded-xl border border-slate-200 overflow-x-auto max-h-[500px] text-slate-700 font-mono">
               {JSON.stringify(result, null, 2)}
             </pre>
-            <button
-              onClick={() => router.push('/')}
-              className="mt-6 py-3 px-5 bg-black text-white font-medium rounded-xl hover:bg-slate-800 active:scale-[0.98] transition-all flex items-center gap-2"
-            >
-              Generate Another
-              <ArrowRight className="h-4 w-4" />
-            </button>
+            <div className="mt-6 flex gap-3">
+              <button
+                onClick={() => router.push('/')}
+                className="py-3 px-5 bg-black text-white font-medium rounded-xl hover:bg-slate-800 active:scale-[0.98] transition-all flex items-center gap-2"
+              >
+                Generate Another
+                <ArrowRight className="h-4 w-4" />
+              </button>
+              <button
+                onClick={() => router.push('/gallery')}
+                className="py-3 px-5 bg-slate-100 text-slate-700 font-medium rounded-xl hover:bg-slate-200 active:scale-[0.98] transition-all"
+              >
+                View Gallery
+              </button>
+            </div>
           </div>
         )}
       </div>
