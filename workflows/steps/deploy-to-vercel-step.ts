@@ -58,8 +58,11 @@ export async function deployToVercelStep({
         framework: 'nextjs',
         buildCommand: null, // Pre-built
         outputDirectory: null,
+        devCommand: null,
+        installCommand: null,
       },
       target: 'production',
+      public: true,
     }),
   });
 

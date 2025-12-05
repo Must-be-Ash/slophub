@@ -249,12 +249,15 @@ export function WorkflowStatusClient({
                   </div>
                 </div>
               </div>
-              <iframe
-                src={liveUrl}
-                className="w-full h-[500px]"
-                title="Landing Page Preview"
-                sandbox="allow-scripts allow-same-origin"
-              />
+              <div className="relative bg-slate-50">
+                <iframe
+                  src={liveUrl}
+                  className="w-full h-[600px] border-0"
+                  title="Landing Page Preview"
+                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+                  loading="lazy"
+                />
+              </div>
             </div>
 
             <div className="flex gap-3">

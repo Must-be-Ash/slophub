@@ -811,6 +811,22 @@ const nextConfig = {
 
 module.exports = nextConfig`,
       },
+      {
+        file: 'vercel.json',
+        data: JSON.stringify({
+          headers: [
+            {
+              source: '/(.*)',
+              headers: [
+                {
+                  key: 'Content-Security-Policy',
+                  value: "frame-ancestors *"
+                }
+              ]
+            }
+          ]
+        }, null, 2),
+      },
     ];
 
     deployResult = await deployToVercelStep({
