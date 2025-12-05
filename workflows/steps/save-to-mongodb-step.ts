@@ -18,6 +18,7 @@ export async function saveToMongoDBStep({
     }>;
     liveUrl?: string;
     deploymentId?: string;
+    screenshotUrl?: string;
     createdAt: number;
   };
 }) {

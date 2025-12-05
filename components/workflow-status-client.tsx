@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import { WorkflowStepTimeline } from './workflow-step-timeline';
 import { WorkflowProgressBar } from './workflow-progress-bar';
 import { TextShimmer } from '@/components/ui/text-shimmer';
@@ -174,6 +175,7 @@ export function WorkflowStatusClient({
   // Success state
   if (status === 'completed' && result) {
     const liveUrl = result.liveUrl;
+    const screenshotUrl = result.screenshotUrl;
     const hasLiveUrl = liveUrl && typeof liveUrl === 'string';
 
     return (
@@ -235,30 +237,46 @@ export function WorkflowStatusClient({
               </button>
             </div>
 
-            {/* Preview iframe */}
-            <div className="border border-slate-200 rounded-xl overflow-hidden mb-6">
-              <div className="bg-slate-100 px-4 py-2 flex items-center gap-2 border-b border-slate-200">
-                <div className="flex gap-1.5">
-                  <div className="h-3 w-3 rounded-full bg-slate-300" />
-                  <div className="h-3 w-3 rounded-full bg-slate-300" />
-                  <div className="h-3 w-3 rounded-full bg-slate-300" />
-                </div>
-                <div className="flex-1 mx-4">
-                  <div className="bg-white rounded-md px-3 py-1 text-xs text-slate-400 font-mono truncate">
-                    {liveUrl}
+            {/* Preview screenshot */}
+            {screenshotUrl ? (
+              <div className="border border-slate-200 rounded-xl overflow-hidden mb-6">
+                <div className="bg-slate-100 px-4 py-2 flex items-center gap-2 border-b border-slate-200">
+                  <div className="flex gap-1.5">
+                    <div className="h-3 w-3 rounded-full bg-slate-300" />
+                    <div className="h-3 w-3 rounded-full bg-slate-300" />
+                    <div className="h-3 w-3 rounded-full bg-slate-300" />
+                  </div>
+                  <div className="flex-1 mx-4">
+                    <div className="bg-white rounded-md px-3 py-1 text-xs text-slate-400 font-mono truncate">
+                      {liveUrl}
+                    </div>
                   </div>
                 </div>
+                <div className="relative bg-slate-50 p-4">
+                  <a
+                    href={liveUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="block hover:opacity-95 transition-opacity cursor-pointer"
+                  >
+                    <Image
+                      src={screenshotUrl}
+                      alt="Landing Page Preview"
+                      width={1280}
+                      height={720}
+                      className="w-full h-auto border border-slate-200 rounded-lg"
+                    />
+                  </a>
+                  <p className="mt-3 text-xs text-slate-500 text-center">
+                    Click screenshot to open live site in new tab
+                  </p>
+                </div>
               </div>
-              <div className="relative bg-slate-50">
-                <iframe
-                  src={liveUrl}
-                  className="w-full h-[600px] border-0"
-                  title="Landing Page Preview"
-                  sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
-                  loading="lazy"
-                />
+            ) : (
+              <div className="border border-slate-200 rounded-xl overflow-hidden mb-6 bg-slate-50 p-8 text-center">
+                <p className="text-slate-500">Preview screenshot unavailable</p>
               </div>
-            </div>
+            )}
 
             <div className="flex gap-3">
               <a

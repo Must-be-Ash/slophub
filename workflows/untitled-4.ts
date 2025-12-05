@@ -39,6 +39,7 @@ const WORKFLOW_STEPS = [
   { id: 'images', label: 'Generate Landing Page Images' },
   { id: 'create', label: 'Create Landing Page' },
   { id: 'deploy', label: 'Deploy to Vercel' },
+  { id: 'screenshot', label: 'Capture Preview Screenshot' },
 ];
 
 // Step function to initialize all steps as pending
@@ -631,7 +632,7 @@ Return ONLY the complete page.tsx file content with:
     throw error;
   }
 
-  // Step 5: Deploy to Vercel
+  // Step 6: Deploy to Vercel
   await updateStepStatusStep(writable, runId, 'deploy', 'running');
   let deployResult;
   try {
@@ -865,6 +866,45 @@ module.exports = nextConfig`,
     throw error;
   }
 
+  // Step 7: Capture Screenshot
+  await updateStepStatusStep(writable, runId, 'screenshot', 'running');
+  let screenshotUrl: string | undefined;
+  try {
+    const startTime = Date.now();
+
+    // Call screenshot step
+    const { screenshotStep } = await import('./steps/screenshot-step');
+    const screenshotResult = await screenshotStep({
+      url: deployResult.url,
+    });
+
+    screenshotUrl = screenshotResult.screenshotUrl;
+
+    await updateStepStatusStep(writable, runId, 'screenshot', 'success', {
+      detail: {
+        screenshotUrl,
+      },
+      duration: Date.now() - startTime,
+    });
+
+    await logStepDataStep({
+      runId,
+      stepName: 'screenshot',
+      stepData: {
+        url: deployResult.url,
+        screenshotUrl,
+        timestamp: Date.now(),
+      },
+    });
+  } catch (error) {
+    // Don't fail workflow if screenshot fails - continue without it
+    console.error('Screenshot capture failed:', error);
+    await updateStepStatusStep(writable, runId, 'screenshot', 'error', {
+      error: 'Screenshot capture failed - deployment still successful',
+    });
+    // Continue workflow - screenshotUrl will be undefined
+  }
+
   // Save to MongoDB for persistence
   try {
     await saveToMongoDBStep({
@@ -886,6 +926,7 @@ module.exports = nextConfig`,
         generatedImages,
         liveUrl: deployResult.url,
         deploymentId: deployResult.deploymentId,
+        screenshotUrl,
         createdAt: Date.now(),
       },
     });
@@ -910,5 +951,6 @@ module.exports = nextConfig`,
     uploadedAssets,
     generatedImages,
     referenceImageUrl: input.imageUrl,
+    screenshotUrl,
   };
 }
