@@ -18,10 +18,6 @@ import { uploadAssetsStep } from './steps/upload-assets-step';
 import { saveToMongoDBStep } from './steps/save-to-mongodb-step';
 import { logStepDataStep } from './steps/log-step-data';
 import { falImageGenerationStep } from './steps/fal-image-generation-step';
-import { addToMicrofrontendsGroupStep } from './steps/add-to-microfrontends-group-step';
-import { verifyMicrofrontendGroupMembershipStep } from './steps/verify-microfrontend-group-membership-step';
-import { registerMicrofrontendStep } from './steps/register-microfrontend-step';
-import { commitAndPushStep } from './steps/commit-and-push-step';
 import { addStepUpdate } from '../lib/workflow-cache';
 
 // Step update interface for streaming progress
@@ -43,10 +39,6 @@ const WORKFLOW_STEPS = [
   { id: 'images', label: 'Generate Landing Page Images' },
   { id: 'create', label: 'Create Landing Page' },
   { id: 'deploy', label: 'Deploy to Vercel' },
-  { id: 'addToGroup', label: 'Add to Microfrontends Group' },
-  { id: 'verifyGroup', label: 'Verify Group Membership' },
-  { id: 'register', label: 'Register Microfrontend' },
-  { id: 'commit', label: 'Update Parent Application' },
   { id: 'screenshot', label: 'Capture Preview Screenshot' },
 ];
 
@@ -874,205 +866,13 @@ module.exports = nextConfig`,
     throw error;
   }
 
-  // Step 7: Add to Microfrontends Group
-  await updateStepStatusStep(writable, runId, 'addToGroup', 'running');
-  let addedToGroup = false;
-  try {
-    const startTime = Date.now();
-
-    const microfrontendsGroupId = process.env.VERCEL_MICROFRONTENDS_GROUP_ID;
-
-    if (!microfrontendsGroupId) {
-      console.warn('VERCEL_MICROFRONTENDS_GROUP_ID not set, skipping add to group step');
-      await updateStepStatusStep(writable, runId, 'addToGroup', 'success', {
-        detail: { skipped: true, reason: 'No microfrontends group ID configured' },
-        duration: Date.now() - startTime,
-      });
-    } else {
-      const groupResult = await addToMicrofrontendsGroupStep({
-        projectName: deployResult.projectName,
-        microfrontendsGroupId,
-      });
-
-      addedToGroup = groupResult.addedToGroup;
-
-      await updateStepStatusStep(writable, runId, 'addToGroup', 'success', {
-        detail: {
-          addedToGroup: groupResult.addedToGroup,
-          projectName: deployResult.projectName,
-          groupId: microfrontendsGroupId,
-        },
-        duration: Date.now() - startTime,
-      });
-
-      await logStepDataStep({
-        runId,
-        stepName: 'addToGroup',
-        stepData: {
-          projectName: deployResult.projectName,
-          microfrontendsGroupId,
-          addedToGroup: groupResult.addedToGroup,
-          timestamp: Date.now(),
-        },
-      });
-    }
-  } catch (error) {
-    console.error('Failed to add to microfrontends group:', error);
-    await updateStepStatusStep(writable, runId, 'addToGroup', 'error', {
-      error: 'Failed to add to microfrontends group - will continue with manual addition',
-    });
-    // Don't throw - this is not critical, continue workflow
-  }
-
-  // Step 7.5: Verify Group Membership
-  await updateStepStatusStep(writable, runId, 'verifyGroup', 'running');
-  try {
-    const startTime = Date.now();
-
-    const microfrontendsGroupId = process.env.VERCEL_MICROFRONTENDS_GROUP_ID;
-
-    if (!microfrontendsGroupId || !addedToGroup) {
-      console.warn('Skipping verification - either no group ID or project was not added');
-      await updateStepStatusStep(writable, runId, 'verifyGroup', 'success', {
-        detail: {
-          skipped: true,
-          reason: !microfrontendsGroupId
-            ? 'No microfrontends group ID configured'
-            : 'Project was not added to group in previous step'
-        },
-        duration: Date.now() - startTime,
-      });
-    } else {
-      const verifyResult = await verifyMicrofrontendGroupMembershipStep({
-        projectName: deployResult.projectName,
-        microfrontendsGroupId,
-        maxAttempts: 10,
-        delayMs: 2000,
-      });
-
-      await updateStepStatusStep(writable, runId, 'verifyGroup', 'success', {
-        detail: {
-          verified: verifyResult.verified,
-          attempts: verifyResult.attempts,
-          projectName: deployResult.projectName,
-        },
-        duration: Date.now() - startTime,
-      });
-
-      await logStepDataStep({
-        runId,
-        stepName: 'verifyGroup',
-        stepData: {
-          projectName: deployResult.projectName,
-          microfrontendsGroupId,
-          verified: verifyResult.verified,
-          attempts: verifyResult.attempts,
-          timestamp: Date.now(),
-        },
-      });
-    }
-  } catch (error) {
-    console.error('Failed to verify group membership:', error);
-    await updateStepStatusStep(writable, runId, 'verifyGroup', 'error', {
-      error: error instanceof Error ? error.message : 'Failed to verify group membership',
-    });
-    // This is critical - if we can't verify, we shouldn't proceed with registration
-    throw error;
-  }
-
-  // Step 8: Register Microfrontend
-  await updateStepStatusStep(writable, runId, 'register', 'running');
-  let microfrontendPath: string | undefined;
-  try {
-    const startTime = Date.now();
-
-    const registrationResult = await registerMicrofrontendStep({
-      runId,
-      projectName: deployResult.projectName,
-    });
-
-    microfrontendPath = registrationResult.path;
-
-    await updateStepStatusStep(writable, runId, 'register', 'success', {
-      detail: { path: microfrontendPath },
-      duration: Date.now() - startTime,
-    });
-
-    await logStepDataStep({
-      runId,
-      stepName: 'register',
-      stepData: {
-        path: microfrontendPath,
-        projectName: deployResult.projectName,
-        timestamp: Date.now(),
-      },
-    });
-  } catch (error) {
-    console.error('Microfrontend registration failed:', error);
-    await updateStepStatusStep(writable, runId, 'register', 'error', {
-      error: 'Failed to register microfrontend - landing page still accessible via standalone URL',
-    });
-    // Don't throw - continue with standalone URL
-  }
-
-  // Step 9: Commit and Push (Git Approach)
-  await updateStepStatusStep(writable, runId, 'commit', 'running');
-  let parentUpdated = false;
-  try {
-    const startTime = Date.now();
-
-    const commitResult = await commitAndPushStep({
-      runId,
-      route: microfrontendPath || '/unknown',
-    });
-
-    parentUpdated = commitResult.success;
-
-    await updateStepStatusStep(writable, runId, 'commit', 'success', {
-      detail: {
-        commitHash: commitResult.commitHash,
-        pushed: commitResult.success,
-      },
-      duration: Date.now() - startTime,
-    });
-
-    await logStepDataStep({
-      runId,
-      stepName: 'commit',
-      stepData: {
-        success: commitResult.success,
-        commitHash: commitResult.commitHash,
-        route: microfrontendPath,
-        timestamp: Date.now(),
-      },
-    });
-  } catch (error) {
-    console.error('Git commit/push failed:', error);
-    await updateStepStatusStep(writable, runId, 'commit', 'error', {
-      error: 'Parent app update pending - microfrontend will be available after next deployment',
-    });
-    // Don't throw - landing page is still accessible via standalone URL
-  }
-
-  // Step 10: Capture Screenshot
+  // Step 7: Capture Screenshot
   await updateStepStatusStep(writable, runId, 'screenshot', 'running');
   let screenshotUrl: string | undefined;
   try {
     const startTime = Date.now();
 
-    // Determine which URL to screenshot
-    const parentDomain = 'blog-agent-nine.vercel.app';
-
-    // Wait a bit for parent app deployment if we just pushed
-    // (Vercel typically deploys in 30-60 seconds)
-    if (microfrontendPath && parentUpdated) {
-      // Wait 45 seconds for parent deployment to complete
-      await new Promise(resolve => setTimeout(resolve, 45000));
-    }
-
-    const urlToScreenshot = (microfrontendPath && parentUpdated)
-      ? `https://${parentDomain}${microfrontendPath}`
-      : deployResult.url;
+    const urlToScreenshot = deployResult.url;
 
     // Call screenshot step
     const { screenshotStep } = await import('./steps/screenshot-step');
@@ -1109,11 +909,6 @@ module.exports = nextConfig`,
   }
 
   // Save to MongoDB for persistence
-  const parentDomain = 'blog-agent-nine.vercel.app';
-  const finalUrl = (microfrontendPath && parentUpdated)
-    ? `https://${parentDomain}${microfrontendPath}`
-    : deployResult.url;
-
   try {
     await saveToMongoDBStep({
       workflowData: {
@@ -1132,9 +927,8 @@ module.exports = nextConfig`,
         landingPageSpec: specResult.text,
         referenceImageUrl: input.imageUrl,
         generatedImages,
-        liveUrl: finalUrl, // Microfrontend URL if available, else standalone
-        standaloneUrl: deployResult.url, // Always save standalone URL as fallback
-        microfrontendPath, // e.g., "/landing-abc123"
+        liveUrl: deployResult.url,
+        standaloneUrl: deployResult.url,
         deploymentId: deployResult.deploymentId,
         screenshotUrl,
         createdAt: Date.now(),
@@ -1150,9 +944,8 @@ module.exports = nextConfig`,
 
   return {
     landingPage: blogResult.blogPage,
-    liveUrl: finalUrl, // Microfrontend URL if available, else standalone
-    standaloneUrl: deployResult.url, // Always available as fallback
-    microfrontendPath, // e.g., "/landing-abc123"
+    liveUrl: deployResult.url,
+    standaloneUrl: deployResult.url,
     deploymentId: deployResult.deploymentId,
     spec: specResult.text,
     scrapeMetadata: scrapeResult.metadata,
