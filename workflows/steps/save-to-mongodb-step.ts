@@ -11,15 +11,16 @@ export async function saveToMongoDBStep({
     branding?: any;
     campaignDescription: string;
     landingPageSpec: string;
+    landingPageHtml?: string; // Rendered HTML for the landing page
     referenceImageUrl?: string;
     generatedImages?: Array<{
       name: string;
       blobUrl: string;
     }>;
     liveUrl?: string;
-    standaloneUrl?: string; // NEW - standalone deployment URL
-    microfrontendPath?: string; // NEW - e.g., "/landing-abc123"
-    deploymentId?: string;
+    standaloneUrl?: string; // Standalone deployment URL (deprecated)
+    microfrontendPath?: string; // Microfrontend path (deprecated)
+    deploymentId?: string; // Deployment ID (deprecated)
     screenshotUrl?: string;
     createdAt: number;
   };

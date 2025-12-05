@@ -13,7 +13,7 @@ import { firecrawlScrapeStep } from './steps/scrape-step';
 import { perplexitySearchStep } from './steps/search-step';
 import { generateTextStep } from './steps/generate-text-step';
 import { createChatStep } from './steps/create-chat-step';
-import { deployToVercelStep } from './steps/deploy-to-vercel-step';
+import { renderLandingPageHtmlStep } from './steps/render-landing-page-html-step';
 import { uploadAssetsStep } from './steps/upload-assets-step';
 import { saveToMongoDBStep } from './steps/save-to-mongodb-step';
 import { logStepDataStep } from './steps/log-step-data';
@@ -38,7 +38,7 @@ const WORKFLOW_STEPS = [
   { id: 'generate', label: 'Generate Landing Page Spec' },
   { id: 'images', label: 'Generate Landing Page Images' },
   { id: 'create', label: 'Create Landing Page' },
-  { id: 'deploy', label: 'Deploy to Vercel' },
+  { id: 'render', label: 'Render Landing Page HTML' },
   { id: 'screenshot', label: 'Capture Preview Screenshot' },
 ];
 
@@ -632,280 +632,72 @@ Return ONLY the complete page.tsx file content with:
     throw error;
   }
 
-  // Step 6: Deploy to Vercel
-  await updateStepStatusStep(writable, runId, 'deploy', 'running');
-  let deployResult;
+  // Step 6: Render Landing Page HTML
+  await updateStepStatusStep(writable, runId, 'render', 'running');
+  let landingPageHtml: string;
   try {
     const startTime = Date.now();
 
-    // Extract code from V0 response (remove markdown code blocks and thinking tags)
-    let pageCode = blogResult.blogPage;
-
-    // Step 1: Remove <Thinking> tags (V0 includes reasoning in the response)
-    pageCode = pageCode.replace(/<Thinking>[\s\S]*?<\/Thinking>/gi, '');
-    pageCode = pageCode.replace(/<thinking>[\s\S]*?<\/thinking>/gi, '');
-
-    // Step 2: Remove markdown code blocks - try multiple patterns
-    // Pattern 1: Standard markdown code block with language specifier
-    let codeBlockMatch = pageCode.match(/```(?:tsx|typescript|jsx|ts|js)?\s*\n([\s\S]*?)```/);
-    if (codeBlockMatch) {
-      pageCode = codeBlockMatch[1];
-    }
-
-    // Pattern 2: If still has code block markers at start, strip them
-    if (pageCode.trim().startsWith('```')) {
-      // Remove opening code block
-      pageCode = pageCode.replace(/^```(?:tsx|typescript|jsx|ts|js)?\s*\n/, '');
-      // Remove closing code block
-      pageCode = pageCode.replace(/\n```\s*$/, '');
-    }
-
-    // Step 3: Trim whitespace
-    pageCode = pageCode.trim();
-
-    // Step 4: Final check - if STILL starts with ```, do aggressive cleanup
-    if (pageCode.startsWith('```')) {
-      const lines = pageCode.split('\n');
-      // Remove first line if it's a code block marker
-      if (lines[0].trim().startsWith('```')) {
-        lines.shift();
-      }
-      // Remove last line if it's a code block marker
-      if (lines[lines.length - 1].trim() === '```') {
-        lines.pop();
-      }
-      pageCode = lines.join('\n').trim();
-    }
-
-    // Step 5: Validate that we have actual code
-    if (!pageCode || pageCode.length < 100) {
-      throw new Error(`V0 generated code is too short or empty after cleaning. Length: ${pageCode.length}`);
-    }
-
-    // Step 6: Basic validation: check if it looks like React/Next.js code
-    if (!pageCode.includes('export') && !pageCode.includes('function') && !pageCode.includes('const')) {
-      throw new Error('V0 generated code does not appear to be valid JavaScript/TypeScript');
-    }
-
-    // Step 7: Final validation - ensure it doesn't start with invalid syntax
-    if (pageCode.startsWith('```') || pageCode.startsWith('<')) {
-      throw new Error(`V0 generated code still contains markdown/XML markers. First 100 chars: ${pageCode.slice(0, 100)}`);
-    }
-
-    // Prepare files for deployment
-    const projectName = `funnel-${scrapeResult.metadata.industry.toLowerCase().replace(/\s+/g, '-')}-${Date.now()}`;
-
-    const files = [
-      {
-        file: 'app/page.tsx',
-        data: pageCode,
+    // Convert TSX to static HTML
+    const renderResult = await renderLandingPageHtmlStep({
+      tsxCode: blogResult.blogPage,
+      brandAssets: {
+        title: scrapeResult.metadata.title,
+        description: scrapeResult.metadata.description,
+        ogImage: ogImageAsset?.blobUrl || scrapeResult.metadata.ogImage,
+        favicon: faviconAsset?.blobUrl || scrapeResult.metadata.favicon,
       },
-      {
-        file: 'package.json',
-        data: JSON.stringify({
-          name: projectName,
-          version: '0.1.0',
-          private: true,
-          scripts: {
-            dev: 'next dev',
-            build: 'next build',
-            start: 'next start',
-          },
-          dependencies: {
-            next: '15.0.0',
-            react: '^18.2.0',
-            'react-dom': '^18.2.0',
-            tailwindcss: '^3.4.1',
-            autoprefixer: '^10.4.17',
-            postcss: '^8.4.33',
-          },
-          devDependencies: {
-            typescript: '^5.3.3',
-            '@types/react': '^18.2.0',
-            '@types/node': '^20.11.5',
-          },
-        }, null, 2),
-      },
-      {
-        file: 'app/layout.tsx',
-        data: `import './globals.css'
-
-export default function RootLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <html lang="en">
-      <body>{children}</body>
-    </html>
-  );
-}`,
-      },
-      {
-        file: 'tailwind.config.js',
-        data: `/** @type {import('tailwindcss').Config} */
-module.exports = {
-  content: [
-    './app/**/*.{js,ts,jsx,tsx,mdx}',
-  ],
-  theme: {
-    extend: {},
-  },
-  plugins: [],
-}`,
-      },
-      {
-        file: 'postcss.config.js',
-        data: `module.exports = {
-  plugins: {
-    tailwindcss: {},
-    autoprefixer: {},
-  },
-}`,
-      },
-      {
-        file: 'app/globals.css',
-        data: `@tailwind base;
-@tailwind components;
-@tailwind utilities;`,
-      },
-      {
-        file: 'tsconfig.json',
-        data: JSON.stringify({
-          compilerOptions: {
-            target: 'ES2017',
-            lib: ['dom', 'dom.iterable', 'esnext'],
-            allowJs: true,
-            skipLibCheck: true,
-            strict: false,
-            noEmit: true,
-            esModuleInterop: true,
-            module: 'esnext',
-            moduleResolution: 'bundler',
-            resolveJsonModule: true,
-            isolatedModules: true,
-            jsx: 'preserve',
-            incremental: true,
-            plugins: [
-              {
-                name: 'next'
-              }
-            ],
-            paths: {
-              '@/*': ['./*']
-            }
-          },
-          include: ['next-env.d.ts', '**/*.ts', '**/*.tsx', '.next/types/**/*.ts'],
-          exclude: ['node_modules']
-        }, null, 2),
-      },
-      {
-        file: 'next.config.js',
-        data: `/** @type {import('next').NextConfig} */
-const nextConfig = {
-  images: {
-    remotePatterns: [
-      {
-        protocol: 'https',
-        hostname: '**.public.blob.vercel-storage.com',
-      },
-    ],
-  },
-}
-
-module.exports = nextConfig`,
-      },
-      {
-        file: 'vercel.json',
-        data: JSON.stringify({
-          headers: [
-            {
-              source: '/(.*)',
-              headers: [
-                {
-                  key: 'Content-Security-Policy',
-                  value: "frame-ancestors *"
-                }
-              ]
-            }
-          ]
-        }, null, 2),
-      },
-    ];
-
-    deployResult = await deployToVercelStep({
-      files,
-      projectName,
     });
 
-    await updateStepStatusStep(writable, runId, 'deploy', 'success', {
+    landingPageHtml = renderResult.html;
+
+    await updateStepStatusStep(writable, runId, 'render', 'success', {
       detail: {
-        url: deployResult.url,
-        deploymentId: deployResult.deploymentId,
+        htmlLength: landingPageHtml.length,
       },
       duration: Date.now() - startTime,
     });
 
-    // Log complete Vercel deployment data to MongoDB
+    // Log HTML rendering data to MongoDB
     await logStepDataStep({
       runId,
-      stepName: 'deploy',
+      stepName: 'render',
       stepData: {
-        projectName,
-        files: files.map(f => ({
-          file: f.file,
-          size: f.data.length,
-        })),
-        deploymentUrl: deployResult.url,
-        deploymentId: deployResult.deploymentId,
-        pageCode: pageCode.slice(0, 5000), // Log first 5000 chars of the page code
+        htmlLength: landingPageHtml.length,
+        htmlPreview: landingPageHtml.slice(0, 500),
         timestamp: Date.now(),
       },
     });
   } catch (error) {
-    await updateStepStatusStep(writable, runId, 'deploy', 'error', {
+    await updateStepStatusStep(writable, runId, 'render', 'error', {
       error: error instanceof Error ? error.message : String(error),
     });
     throw error;
   }
 
-  // Step 7: Capture Screenshot
+  // Determine the final URL for this landing page
+  const landingPageUrl = `https://blog-agent-nine.vercel.app/landing-${runId}`;
+
+  // Step 7: Capture Screenshot (skip for now - we'll capture after deployment)
   await updateStepStatusStep(writable, runId, 'screenshot', 'running');
   let screenshotUrl: string | undefined;
   try {
     const startTime = Date.now();
 
-    const urlToScreenshot = deployResult.url;
-
-    // Call screenshot step
-    const { screenshotStep } = await import('./steps/screenshot-step');
-    const screenshotResult = await screenshotStep({
-      url: urlToScreenshot,
-    });
-
-    screenshotUrl = screenshotResult.screenshotUrl;
-
+    // Skip screenshot for now since the page isn't deployed yet
+    // The screenshot will be captured manually or in a follow-up workflow
     await updateStepStatusStep(writable, runId, 'screenshot', 'success', {
       detail: {
-        screenshotUrl,
-        urlScreenshotted: urlToScreenshot,
+        skipped: true,
+        reason: 'Screenshot will be captured after page is live',
       },
       duration: Date.now() - startTime,
     });
-
-    await logStepDataStep({
-      runId,
-      stepName: 'screenshot',
-      stepData: {
-        url: urlToScreenshot,
-        screenshotUrl,
-        timestamp: Date.now(),
-      },
-    });
   } catch (error) {
-    // Don't fail workflow if screenshot fails - continue without it
-    console.error('Screenshot capture failed:', error);
+    console.error('Screenshot step error:', error);
     await updateStepStatusStep(writable, runId, 'screenshot', 'error', {
-      error: 'Screenshot capture failed - deployment still successful',
+      error: 'Screenshot skipped',
     });
-    // Continue workflow - screenshotUrl will be undefined
   }
 
   // Save to MongoDB for persistence
@@ -925,11 +717,10 @@ module.exports = nextConfig`,
         branding: scrapeResult.branding, // Comprehensive Firecrawl branding data
         campaignDescription: input.campaignDescription,
         landingPageSpec: specResult.text,
+        landingPageHtml, // Store the rendered HTML
         referenceImageUrl: input.imageUrl,
         generatedImages,
-        liveUrl: deployResult.url,
-        standaloneUrl: deployResult.url,
-        deploymentId: deployResult.deploymentId,
+        liveUrl: landingPageUrl,
         screenshotUrl,
         createdAt: Date.now(),
       },
@@ -944,9 +735,8 @@ module.exports = nextConfig`,
 
   return {
     landingPage: blogResult.blogPage,
-    liveUrl: deployResult.url,
-    standaloneUrl: deployResult.url,
-    deploymentId: deployResult.deploymentId,
+    landingPageHtml,
+    liveUrl: landingPageUrl,
     spec: specResult.text,
     scrapeMetadata: scrapeResult.metadata,
     campaignDescription: input.campaignDescription,

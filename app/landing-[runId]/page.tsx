@@ -1,10 +1,10 @@
-import { redirect } from 'next/navigation';
 import { MongoClient } from 'mongodb';
+import { notFound } from 'next/navigation';
 
 interface PageProps {
-  params: {
+  params: Promise<{
     runId: string;
-  };
+  }>;
 }
 
 async function getLandingPageData(runId: string) {
@@ -33,30 +33,37 @@ async function getLandingPageData(runId: string) {
 }
 
 export default async function LandingPage({ params }: PageProps) {
-  const { runId } = params;
+  const { runId } = await params;
 
   // Fetch landing page data from MongoDB
   const data = await getLandingPageData(runId);
 
-  // If no data found or no standalone URL, show 404
-  if (!data || !data.standaloneUrl) {
+  // If no data found, show 404
+  if (!data) {
+    notFound();
+  }
+
+  // If we have the rendered HTML, display it
+  if (data.landingPageHtml) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50">
-        <div className="text-center">
-          <h1 className="text-4xl font-bold text-slate-900 mb-2">404</h1>
-          <p className="text-slate-600">Landing page not found</p>
-          <a
-            href="/"
-            className="mt-4 inline-block text-blue-600 hover:text-blue-700"
-          >
-            Go home
-          </a>
-        </div>
-      </div>
+      <div
+        dangerouslySetInnerHTML={{ __html: data.landingPageHtml }}
+        suppressHydrationWarning
+      />
     );
   }
 
-  // Redirect to the standalone URL
-  // This is a temporary solution until Vercel microfrontends is fully configured
-  redirect(data.standaloneUrl);
+  // Fallback if no HTML is available
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-slate-50 p-4">
+      <div className="max-w-2xl w-full bg-white rounded-lg shadow-lg p-8 text-center">
+        <h1 className="text-3xl font-bold text-slate-900 mb-4">
+          Landing Page Not Ready
+        </h1>
+        <p className="text-slate-600 mb-8">
+          This landing page is still being generated. Please check back in a moment.
+        </p>
+      </div>
+    </div>
+  );
 }

@@ -12,3 +12,5 @@ It lets you monetize your endpoints with micro payments (no transaction fees) an
 
 this was the plan we set out to implement /Users/ashnouruzi/blog-agent/plan.md
 go through it and double check if we executed everything as planned
+
+wrun_01KBP6X0GJZXJYY0XVS13TPRMT wrun_01KBP9Q8YCKHXD7W77BYCH33X9 
