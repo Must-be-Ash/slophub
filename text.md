@@ -7,6 +7,9 @@ An open source protocol that leverages the 402 payment request HTTP status code.
 
 It lets you monetize your endpoints with micro payments (no transaction fees) and pay-per-use. Because it happens over HTTP and the endpoints are pay gated there’s no need for api keys making it perfect for Ai agents to access api tools and services without facing account signups 
 
+///////
+
+I want to encourage artists (painters, and musicians and graphic designers) to mint their artworks as NFTs onchain. We have tools that lets anyone create NFTs without any technical knowledge, and you can easily deploy your own contract using our service at manifold. We also have an upcoming SDK that lets people bring the mint to mechanism to their own site so they could send their fans and supporters or customers to their own site and have them mint the NFTs on their own site.
 
 ///////
 https://www.thaiaway.com/

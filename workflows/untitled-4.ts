@@ -371,13 +371,27 @@ Return a detailed specification with all sections clearly outlined.`,
   try {
     const startTime = Date.now();
 
-    // Prepare brand image URLs
+    // Helper function to check if URL is a supported raster image format
+    const isSupportedImageFormat = (url: string): boolean => {
+      const supportedExtensions = ['.png', '.jpg', '.jpeg', '.webp'];
+      const urlLower = url.toLowerCase();
+      return supportedExtensions.some(ext => urlLower.includes(ext));
+    };
+
+    // Prepare brand image URLs - filter to only supported formats (exclude SVG, ICO, etc)
     const brandImageUrls: string[] = [];
-    if (scrapeResult.metadata.ogImage) {
+    if (scrapeResult.metadata.ogImage && isSupportedImageFormat(scrapeResult.metadata.ogImage)) {
       brandImageUrls.push(scrapeResult.metadata.ogImage);
+      console.log('[Workflow] Added OG image to brand assets:', scrapeResult.metadata.ogImage);
+    } else if (scrapeResult.metadata.ogImage) {
+      console.log('[Workflow] Skipped unsupported OG image format:', scrapeResult.metadata.ogImage);
     }
-    if (scrapeResult.metadata.favicon) {
+
+    if (scrapeResult.metadata.favicon && isSupportedImageFormat(scrapeResult.metadata.favicon)) {
       brandImageUrls.push(scrapeResult.metadata.favicon);
+      console.log('[Workflow] Added favicon to brand assets:', scrapeResult.metadata.favicon);
+    } else if (scrapeResult.metadata.favicon) {
+      console.log('[Workflow] Skipped unsupported favicon format:', scrapeResult.metadata.favicon);
     }
 
     // Call Fal image generation
