@@ -1,6 +1,6 @@
 import { WorkflowStatusClient } from '@/components/workflow-status-client';
-import { Sparkles } from 'lucide-react';
 import Link from 'next/link';
+import Image from 'next/image';
 
 export default async function WorkflowPage({
   params
@@ -50,11 +50,15 @@ export default async function WorkflowPage({
       <header className="relative py-6 px-6">
         <div className="max-w-5xl mx-auto">
           <Link href="/" className="inline-flex items-center gap-3 group">
-            <div className="h-10 w-10 rounded-xl bg-black flex items-center justify-center">
-              <Sparkles className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-lg font-semibold text-slate-900 group-hover:text-slate-600 transition-colors">
-              Landing Page Generator
+            <Image
+              src="/logo-ts.svg"
+              alt="Slophub"
+              width={60}
+              height={60}
+              className="object-contain"
+            />
+            <span className="text-lg font-semibold text-slate-900 group-hover:text-slate-600 transition-colors" style={{ fontFamily: 'var(--font-caprasimo)' }}>
+              Slophub
             </span>
           </Link>
         </div>

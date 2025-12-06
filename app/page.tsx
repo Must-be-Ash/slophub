@@ -4,7 +4,8 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { TextShimmer } from '@/components/ui/text-shimmer';
-import { ArrowRight, Sparkles, Grid3x3 } from 'lucide-react';
+import { ArrowRight, Grid3x3 } from 'lucide-react';
+import Image from 'next/image';
 
 export default function Home() {
   const [url, setUrl] = useState('');
@@ -176,15 +177,19 @@ export default function Home() {
         <div className="w-full max-w-xl">
           {/* Logo/Brand mark */}
           <div className="flex justify-center mb-12">
-            <div className="h-12 w-12 rounded-2xl bg-black flex items-center justify-center">
-              <Sparkles className="h-6 w-6 text-white" />
-            </div>
+            <Image
+              src="/logo-ts.svg"
+              alt="Slophub"
+              width={80}
+              height={80}
+              className="object-contain"
+            />
           </div>
 
           {/* Heading */}
           <div className="text-center mb-10">
-            <h1 className="text-4xl font-semibold tracking-tight text-slate-900 mb-3">
-              Landing Page Generator
+            <h1 className="text-4xl font-semibold tracking-tight text-slate-900 mb-3" style={{ fontFamily: 'var(--font-caprasimo)' }}>
+              Slophub
             </h1>
             <p className="text-slate-500 text-lg">
               Create conversion-focused landing pages for your campaigns
@@ -335,7 +340,7 @@ export default function Home() {
 
       {/* Footer */}
       <footer className="py-6 text-center text-sm text-slate-400 relative">
-        Powered by AI
+        Powered by <span style={{ fontFamily: 'var(--font-caprasimo)' }}>Slophub</span>
       </footer>
     </main>
   );

@@ -501,7 +501,7 @@ Return a detailed specification with all sections clearly outlined.`,
   }
 
   // Determine the final URL for this landing page
-  const landingPageUrl = `https://blog-agent-nine.vercel.app/landing/${runId}`;
+  const landingPageUrl = `https://slophub.xyz/landing/${runId}`;
 
   // Step 7: Capture Screenshot
   await updateStepStatusStep(writable, runId, 'screenshot', 'running');

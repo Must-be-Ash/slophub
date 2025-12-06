@@ -306,7 +306,7 @@ Blog Agent is an AI-powered landing page generator that creates conversion-focus
       "blobUrl": "https://blob.vercel-storage.com/..."
     }
   ],
-  "liveUrl": "https://blog-agent-nine.vercel.app/landing/wrun_...",
+  "liveUrl": "https://slophub.xyz/landing/wrun_...",
   "screenshotUrl": null,
   "createdAt": 1764906418901
 }
@@ -317,7 +317,7 @@ Blog Agent is an AI-powered landing page generator that creates conversion-focus
 ```json
 {
   "runId": "wrun_01KBP9Q8YCKHXD7W77BYCH33X9",
-  "liveUrl": "https://blog-agent-nine.vercel.app/landing/wrun_01KBP9Q8YCKHXD7W77BYCH33X9"
+  "liveUrl": "https://slophub.xyz/landing/wrun_01KBP9Q8YCKHXD7W77BYCH33X9"
 }
 ```
 
@@ -350,7 +350,7 @@ Blog Agent is an AI-powered landing page generator that creates conversion-focus
 
 **Example:**
 ```bash
-curl -X POST https://blog-agent-nine.vercel.app/api/workflows/untitled-4 \
+curl -X POST https://slophub.xyz/api/workflows/untitled-4 \
   -H "Content-Type: application/json" \
   -d '{
     "url": "https://example.com",
@@ -377,7 +377,7 @@ curl -X POST https://blog-agent-nine.vercel.app/api/workflows/untitled-4 \
 
 **Example:**
 ```
-https://blog-agent-nine.vercel.app/landing/wrun_01KBP9Q8YCKHXD7W77BYCH33X9
+https://slophub.xyz/landing/wrun_01KBP9Q8YCKHXD7W77BYCH33X9
 ```
 
 ---

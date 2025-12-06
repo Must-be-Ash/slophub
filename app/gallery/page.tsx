@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Sparkles, ExternalLink, Calendar, Globe } from 'lucide-react';
+import { ExternalLink, Calendar, Globe } from 'lucide-react';
 
 interface Workflow {
   _id: string;
@@ -73,11 +73,15 @@ export default function GalleryPage() {
       <header className="relative py-6 px-6 border-b border-slate-200 bg-white/50 backdrop-blur-sm">
         <div className="max-w-7xl mx-auto flex items-center justify-between">
           <Link href="/" className="inline-flex items-center gap-3 group">
-            <div className="h-10 w-10 rounded-xl bg-black flex items-center justify-center">
-              <Sparkles className="h-5 w-5 text-white" />
-            </div>
-            <span className="text-lg font-semibold text-slate-900 group-hover:text-slate-600 transition-colors">
-              Landing Page Generator
+            <Image
+              src="/logo-ts.svg"
+              alt="Slophub"
+              width={60}
+              height={60}
+              className="object-contain"
+            />
+            <span className="text-lg font-semibold text-slate-900 group-hover:text-slate-600 transition-colors" style={{ fontFamily: 'var(--font-caprasimo)' }}>
+              Slophub
             </span>
           </Link>
           <Link
@@ -94,7 +98,7 @@ export default function GalleryPage() {
         <div className="max-w-7xl mx-auto">
           {/* Page title */}
           <div className="mb-12">
-            <h1 className="text-4xl font-semibold tracking-tight text-slate-900 mb-3">
+            <h1 className="text-4xl font-semibold tracking-tight text-slate-900 mb-3" style={{ fontFamily: 'var(--font-caprasimo)' }}>
               Gallery
             </h1>
             <p className="text-lg text-slate-500">
@@ -122,8 +126,14 @@ export default function GalleryPage() {
           {/* Gallery grid */}
           {!loading && !error && workflows.length === 0 && (
             <div className="bg-white rounded-2xl shadow-sm shadow-black/5 p-12 text-center">
-              <div className="h-16 w-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4">
-                <Sparkles className="h-8 w-8 text-slate-400" />
+              <div className="h-16 w-16 rounded-2xl bg-slate-100 flex items-center justify-center mx-auto mb-4 p-3">
+                <Image
+                  src="/logo-ts.svg"
+                  alt="Slophub"
+                  width={40}
+                  height={40}
+                  className="object-contain opacity-60"
+                />
               </div>
               <h3 className="text-xl font-semibold text-slate-900 mb-2">
                 No landing pages yet
@@ -136,7 +146,6 @@ export default function GalleryPage() {
                 className="inline-flex items-center gap-2 px-5 py-3 bg-black text-white font-medium rounded-xl hover:bg-slate-800 transition-colors"
               >
                 Create Landing Page
-                <Sparkles className="h-4 w-4" />
               </Link>
             </div>
           )}
@@ -231,7 +240,7 @@ export default function GalleryPage() {
 
       {/* Footer */}
       <footer className="py-6 text-center text-sm text-slate-400 relative border-t border-slate-200 bg-white/50 backdrop-blur-sm">
-        Powered by AI
+        Powered by <span style={{ fontFamily: 'var(--font-caprasimo)' }}>Slophub</span>
       </footer>
     </main>
   );

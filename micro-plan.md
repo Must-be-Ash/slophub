@@ -29,7 +29,7 @@
 > no this blog-agent.com/landing1, blog-agent.com/landing2 actually sounds way better. I like that ALL landing pages could
  be just the same site instead of each being another site. compose them under a single parent application at different 
 routes. '/var/folders/l1/f0mrsx4d2jbbdq4pt0w6cmbm0000gn/T/TemporaryItems/NSIRD_screencaptureui_2yl5vy/Screenshot 
-2025-12-04 at 6.33.18 PM.png' here is the parent URL https://blog-agent-nine.vercel.app/ 
+2025-12-04 at 6.33.18 PM.png' here is the parent URL https://slophub.xyz/ 
 
 ⏺ Perfect! That's a much better architecture. Using Vercel microfrontends means:
   - All landing pages under one domain: blog-agent-nine.vercel.app/landing-1, blog-agent-nine.vercel.app/landing-2
@@ -793,7 +793,7 @@ routes. '/var/folders/l1/f0mrsx4d2jbbdq4pt0w6cmbm0000gn/T/TemporaryItems/NSIRD_s
                              ↓
  ┌─────────────────────────────────────────────────────────────────┐
  │ 5. Capture Screenshot                                            │
- │   └─> URL: https://blog-agent-nine.vercel.app/landing-xyz       │
+ │   └─> URL: https://slophub.xyz/landing-xyz       │
  └─────────────────────────────────────────────────────────────────┘
                              ↓
  ┌─────────────────────────────────────────────────────────────────┐
@@ -805,7 +805,7 @@ routes. '/var/folders/l1/f0mrsx4d2jbbdq4pt0w6cmbm0000gn/T/TemporaryItems/NSIRD_s
  ---
  How Microfrontends Routing Works
 
- 1. User visits: https://blog-agent-nine.vercel.app/landing-123
+ 1. User visits: https://slophub.xyz/landing-123
  2. Parent app receives request:
    - Reads microfrontends.json
    - Finds: "/landing-123": "landing-1764899094965-abc123"

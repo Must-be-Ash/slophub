@@ -30,7 +30,7 @@ export function WorkflowStepTimeline({ steps }: WorkflowStepTimelineProps) {
   }
 
   return (
-    <div className="relative">
+      <div className="relative">
       {/* Single continuous connector line behind all icons */}
       {steps.length > 1 && (
         <div 
@@ -40,15 +40,15 @@ export function WorkflowStepTimeline({ steps }: WorkflowStepTimelineProps) {
       )}
 
       <div className="space-y-1 relative z-10">
-        {steps.map((step, index) => (
+          {steps.map((step, index) => (
           <div key={step.stepId}>
             {/* Step row */}
-            <button
-              onClick={() => setExpandedStep(
-                expandedStep === step.stepId ? null : step.stepId
-              )}
+                <button
+                  onClick={() => setExpandedStep(
+                    expandedStep === step.stepId ? null : step.stepId
+                  )}
               className="w-full text-left flex items-start gap-4 p-3 rounded-xl hover:bg-slate-50 transition-colors"
-            >
+                >
               {/* Status icon */}
               <div className={`
                 w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0
@@ -66,16 +66,16 @@ export function WorkflowStepTimeline({ steps }: WorkflowStepTimelineProps) {
               ) : (
                 <Circle className="w-4 h-4 text-slate-400" />
               )}
-            </div>
+                    </div>
 
             {/* Content */}
             <div className="flex-1 min-w-0 pt-1">
               <div className="flex items-center justify-between gap-4">
                 <h3 className="font-medium text-slate-900">{step.stepLabel}</h3>
-                {step.duration && (
+                    {step.duration && (
                   <span className="text-xs text-slate-400 tabular-nums flex-shrink-0">
-                    {(step.duration / 1000).toFixed(1)}s
-                  </span>
+                        {(step.duration / 1000).toFixed(1)}s
+                      </span>
                 )}
               </div>
               {step.status === 'running' ? (
@@ -89,31 +89,31 @@ export function WorkflowStepTimeline({ steps }: WorkflowStepTimelineProps) {
                 <p className={`text-sm ${getStatusText(step.status)}`}>
                   {getStatusLabel(step.status)}
                 </p>
-              )}
-            </div>
-          </button>
+                    )}
+                  </div>
+                </button>
 
-            {/* Expandable details */}
+                {/* Expandable details */}
             {expandedStep === step.stepId && (step.detail || step.error) && (
               <div className="ml-14 mr-3 mb-3 rounded-xl bg-slate-50 border border-slate-100 p-4 space-y-3">
-                {step.detail && (
-                  <div>
+                    {step.detail && (
+                      <div>
                     <h4 className="text-xs font-medium text-slate-500 uppercase tracking-wide mb-2">Details</h4>
                     <pre className="text-xs bg-white p-3 rounded-lg border border-slate-200 overflow-x-auto text-slate-700 font-mono">
-                      {JSON.stringify(step.detail, null, 2)}
-                    </pre>
-                    <button
+                          {JSON.stringify(step.detail, null, 2)}
+                        </pre>
+                        <button
                       onClick={(e) => {
                         e.stopPropagation();
                         navigator.clipboard.writeText(JSON.stringify(step.detail, null, 2));
                       }}
                       className="mt-2 text-xs text-slate-500 hover:text-slate-700 transition-colors"
-                    >
+                        >
                       Copy to clipboard
-                    </button>
-                  </div>
-                )}
-                {step.error && (
+                        </button>
+                      </div>
+                    )}
+                    {step.error && (
                   <div className="rounded-lg bg-red-50 border border-red-100 p-3">
                     <h4 className="text-xs font-medium text-red-600 uppercase tracking-wide mb-1">Error</h4>
                     <p className="text-sm text-red-700 font-mono">{step.error}</p>
@@ -121,8 +121,8 @@ export function WorkflowStepTimeline({ steps }: WorkflowStepTimelineProps) {
                 )}
               </div>
             )}
-          </div>
-        ))}
+            </div>
+          ))}
       </div>
     </div>
   );

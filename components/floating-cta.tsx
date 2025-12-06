@@ -1,38 +1,76 @@
 'use client';
 
 import Link from 'next/link';
-import { Sparkles } from 'lucide-react';
+import Image from 'next/image';
 import { TextShimmer } from '@/components/ui/text-shimmer';
 
 export function FloatingCTA() {
   return (
     <Link
-      href="https://blog-agent-nine.vercel.app/"
+      href="https://slophub.xyz"
       target="_blank"
       rel="noopener noreferrer"
-      className="group fixed bottom-24 right-24 z-[9999]"
+      style={{
+        position: 'fixed',
+        bottom: '24px',
+        right: '24px',
+        zIndex: 9999,
+        textDecoration: 'none',
+      }}
     >
-      <div className="relative">
-        {/* 3D Button with depth - shadow layer */}
-        <div className="absolute inset-0 bg-gradient-to-br from-slate-800 to-slate-950 rounded-full transform translate-y-1 translate-x-1 blur-sm opacity-40" />
+      <div style={{ position: 'relative' }}>
+        {/* 3D Button shadow layer */}
+        <div
+          style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'linear-gradient(to bottom right, #1e293b, #020617)',
+            borderRadius: '9999px',
+            transform: 'translate(2px, 2px)',
+            filter: 'blur(4px)',
+            opacity: 0.4,
+          }}
+        />
 
         {/* Main button */}
-        <div className="relative bg-gradient-to-br from-slate-900 to-black text-white pl-5 pr-6 py-3 rounded-full shadow-2xl hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] transition-all duration-300 transform hover:-translate-y-1 hover:scale-105 border border-slate-700/50">
-          <div className="flex items-center justify-center gap-3">
-            {/* Sparkles icon - no shimmer */}
-            <Sparkles className="h-5 w-5 flex-shrink-0" />
+        <div
+          style={{
+            position: 'relative',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            gap: '12px',
+            background: 'linear-gradient(to bottom right, #0f172a, #000000)',
+            color: 'white',
+            padding: '14px 28px',
+            borderRadius: '9999px',
+            border: '1px solid rgba(51, 65, 85, 0.5)',
+            boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)',
+            cursor: 'pointer',
+            transition: 'all 0.3s ease',
+          }}
+          className="group hover:shadow-[0_20px_60px_-15px_rgba(0,0,0,0.5)] hover:-translate-y-1 hover:scale-105"
+        >
+          {/* Logo icon */}
+          <Image
+            src="/logo-w-t.svg"
+            alt="Slophub"
+            width={20}
+            height={20}
+            style={{ flexShrink: 0, objectFit: 'contain', background: 'transparent' }}
+            unoptimized
+          />
 
-            {/* Shimmering text */}
+          {/* Text with highlighted slophub.xyz */}
+          <span style={{ fontSize: '16px', fontWeight: 600, whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: '4px' }}>
+            <span>created with</span>
             <TextShimmer
               duration={2}
-              className="text-base font-semibold whitespace-nowrap [--base-color:theme(colors.white)] [--base-gradient-color:theme(colors.slate.400)]"
+              className="[--base-color:theme(colors.white)] [--base-gradient-color:theme(colors.blue.300)]"
             >
-              Made with AI
+              slophub.xyz
             </TextShimmer>
-          </div>
-
-          {/* Hover glow effect */}
-          <div className="absolute inset-0 rounded-full bg-gradient-to-r from-blue-500/0 via-purple-500/0 to-pink-500/0 group-hover:from-blue-500/20 group-hover:via-purple-500/20 group-hover:to-pink-500/20 transition-all duration-500" />
+          </span>
         </div>
       </div>
     </Link>
