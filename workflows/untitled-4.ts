@@ -17,6 +17,7 @@ import { uploadAssetsStep } from './steps/upload-assets-step';
 import { saveToMongoDBStep } from './steps/save-to-mongodb-step';
 import { logStepDataStep } from './steps/log-step-data';
 import { falImageGenerationStep } from './steps/fal-image-generation-step';
+import { downloadAndRehostImagesStep } from './steps/download-and-rehost-images-step';
 import { addStepUpdate } from '../lib/workflow-cache';
 
 // Step update interface for streaming progress
@@ -225,6 +226,34 @@ export async function untitled4Workflow(input: {
     throw error;
   }
 
+  // Step 1.5: Capture screenshot of original brand website for visual reference
+  let brandScreenshotUrl: string | undefined;
+  try {
+    console.log('[Workflow] Capturing brand website screenshot for visual reference...');
+
+    const { screenshotStep } = await import('./steps/screenshot-step');
+    const brandScreenshotResult = await screenshotStep({
+      url: input.url, // Original brand URL
+    });
+
+    brandScreenshotUrl = brandScreenshotResult.screenshotUrl;
+    console.log('[Workflow] ✓ Brand screenshot captured:', brandScreenshotUrl);
+
+    // Log to MongoDB
+    await logStepDataStep({
+      runId,
+      stepName: 'brand_screenshot',
+      stepData: {
+        url: input.url,
+        screenshotUrl: brandScreenshotUrl,
+        timestamp: Date.now(),
+      },
+    });
+  } catch (error) {
+    console.warn('[Workflow] Brand screenshot capture failed:', error);
+    // Continue without screenshot - not critical
+  }
+
   // Step 2: Research Campaign Data
   await updateStepStatusStep(writable, runId, 'search', 'running');
   let searchResult;
@@ -265,16 +294,39 @@ export async function untitled4Workflow(input: {
   let specResult;
   try {
     const startTime = Date.now();
+    // Build brand context string
+    const brandContext = scrapeResult.branding ? `
+
+BRAND DESIGN SYSTEM (from original website):
+- Color Scheme: ${scrapeResult.branding.colorScheme || 'Not specified'}
+- Primary Color: ${scrapeResult.branding.colors?.primary || 'Not specified'}
+${scrapeResult.branding.colors?.secondary ? `- Secondary Color: ${scrapeResult.branding.colors.secondary}` : ''}
+${scrapeResult.branding.colors?.accent ? `- Accent Color: ${scrapeResult.branding.colors.accent}` : ''}
+- Primary Font: ${scrapeResult.branding.typography?.fontFamilies?.primary || scrapeResult.branding.fonts?.[0]?.family || 'Not specified'}
+${scrapeResult.branding.personality?.tone ? `- Brand Tone: ${scrapeResult.branding.personality.tone}` : ''}
+${scrapeResult.branding.personality?.energy ? `- Brand Energy: ${scrapeResult.branding.personality.energy}` : ''}` : '';
+
     specResult = await generateTextStep({
       aiFormat: "text",
       aiModel: "gpt-4o",
-      aiPrompt: `Create a conversion-focused landing page specification based on this campaign:
+      aiPrompt: `⚠️ CRITICAL INSTRUCTION - FACTUAL ACCURACY:
+You MUST create content based ONLY on the information provided below. DO NOT:
+- Invent statistics, numbers, or data points not present in the research
+- Make up customer testimonials or quotes
+- Create specific product features not mentioned in the brand content
+- Fabricate company history, founding dates, or team information
+- Generate fake partnerships, certifications, or awards
+
+If information is missing, use general benefit-driven language instead of making up specifics.
+Example: Instead of "10,000+ satisfied customers" (if not in data), use "trusted by businesses worldwide"
+
+Create a conversion-focused landing page specification based on this campaign:
 
 BRAND INFORMATION:
 Website: ${input.url}
 Brand Title: ${scrapeResult.metadata.title}
 Brand Description: ${scrapeResult.metadata.description}
-Industry: ${scrapeResult.metadata.industry}
+Industry: ${scrapeResult.metadata.industry}${brandContext}
 
 CAMPAIGN BRIEF:
 ${input.campaignDescription}
@@ -283,7 +335,17 @@ MARKET RESEARCH & DATA:
 ${searchResult.results}
 
 BRAND CONTENT SAMPLE:
-${scrapeResult.markdown.slice(0, 2000)}
+${scrapeResult.markdown.slice(0, 3000)}
+
+⚠️ BRAND CONSISTENCY REQUIREMENT:
+The landing page spec you create should align with the brand's existing design system and personality. Reference the brand colors, fonts, and tone provided above when suggesting design elements and copy tone.
+
+⚠️ FACTUAL CONTENT REQUIREMENT:
+- Use ONLY facts, data, and claims present in the above sections
+- If specific numbers are not provided, use qualitative descriptions
+- Base testimonials framework on industry context, not invented quotes
+- Feature highlights must align with brand content sample
+- Statistics must come from market research section or be omitted
 
 Create a detailed landing page spec that:
 
@@ -394,6 +456,24 @@ Return a detailed specification with all sections clearly outlined.`,
       console.log('[Workflow] Skipped unsupported favicon format:', scrapeResult.metadata.favicon);
     }
 
+    // Download and rehost brand images to Vercel Blob before FAL
+    let rehostedBrandImages: string[] = [];
+    if (brandImageUrls.length > 0) {
+      console.log(`[Workflow] Rehosting ${brandImageUrls.length} brand image(s) to Vercel Blob...`);
+      const rehostResult = await downloadAndRehostImagesStep({
+        imageUrls: brandImageUrls,
+      });
+
+      rehostedBrandImages = rehostResult.successfulUploads.map(img => img.blobUrl);
+      console.log(`[Workflow] Successfully rehosted ${rehostedBrandImages.length}/${brandImageUrls.length} brand images`);
+
+      // Log failures for debugging
+      if (rehostResult.failedUrls.length > 0) {
+        console.warn('[Workflow] Failed to download brand images:',
+          rehostResult.failedUrls.map(f => `${f.originalUrl}: ${f.error}`));
+      }
+    }
+
     // Call Fal image generation
     const falResult = await falImageGenerationStep({
       campaignDescription: input.campaignDescription,
@@ -406,7 +486,7 @@ Return a detailed specification with all sections clearly outlined.`,
         personality: scrapeResult.branding?.personality,
       },
       referenceImageUrl: input.imageUrl, // User-uploaded reference
-      brandImageUrls,                     // Scraped brand assets
+      brandImageUrls: rehostedBrandImages, // Use rehosted URLs instead of original
     });
 
     // Upload generated images to Vercel Blob
@@ -472,8 +552,10 @@ Return a detailed specification with all sections clearly outlined.`,
         ogImage: ogImageAsset?.blobUrl || scrapeResult.metadata.ogImage,
         favicon: faviconAsset?.blobUrl || scrapeResult.metadata.favicon,
       },
+      branding: scrapeResult.branding, // Pass full Firecrawl branding data
       generatedImages: generatedImages,
       targetUrl: input.url,
+      brandScreenshotUrl: brandScreenshotUrl, // Pass brand screenshot for visual guidance
     });
 
     landingPageHtml = htmlResult.html;
@@ -577,6 +659,7 @@ Return a detailed specification with all sections clearly outlined.`,
           ogImage: ogImageAsset?.blobUrl || scrapeResult.metadata.ogImage,
           favicon: faviconAsset?.blobUrl || scrapeResult.metadata.favicon,
           uploadedAssets,
+          brandScreenshotUrl: brandScreenshotUrl, // Brand website screenshot for reference
         },
         branding: scrapeResult.branding, // Comprehensive Firecrawl branding data
         campaignDescription: input.campaignDescription,

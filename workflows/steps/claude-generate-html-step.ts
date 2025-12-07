@@ -3,8 +3,10 @@ import Anthropic from '@anthropic-ai/sdk';
 export async function claudeGenerateHtmlStep({
   spec,
   brandAssets,
+  branding,
   generatedImages,
   targetUrl,
+  brandScreenshotUrl,
 }: {
   spec: string;
   brandAssets: {
@@ -13,11 +15,31 @@ export async function claudeGenerateHtmlStep({
     ogImage?: string;
     favicon?: string;
   };
+  branding?: {
+    colorScheme?: string;
+    colors?: {
+      primary?: string;
+      secondary?: string;
+      accent?: string;
+    };
+    fonts?: Array<{ family: string }>;
+    typography?: {
+      fontFamilies?: {
+        primary?: string;
+        secondary?: string;
+      };
+    };
+    personality?: {
+      tone?: string;
+      energy?: string;
+    };
+  };
   generatedImages: Array<{
     name: string;
     blobUrl: string;
   }>;
   targetUrl: string;
+  brandScreenshotUrl?: string;
 }): Promise<{ html: string }> {
   'use step';
 
@@ -42,7 +64,49 @@ export async function claudeGenerateHtmlStep({
     .map((img, idx) => `${idx + 1}. ${img.name}: ${img.blobUrl}`)
     .join('\n');
 
+  // Build brand style guide from scraped branding data
+  let brandStyleGuide = '';
+  if (branding) {
+    brandStyleGuide = '\n\nBRAND DESIGN SYSTEM (extracted from original website):';
+
+    if (branding.colorScheme) {
+      brandStyleGuide += `\n- Color Scheme: ${branding.colorScheme}`;
+    }
+
+    if (branding.colors?.primary) {
+      brandStyleGuide += `\n- Primary Color: ${branding.colors.primary}`;
+    }
+    if (branding.colors?.secondary) {
+      brandStyleGuide += `\n- Secondary Color: ${branding.colors.secondary}`;
+    }
+    if (branding.colors?.accent) {
+      brandStyleGuide += `\n- Accent Color: ${branding.colors.accent}`;
+    }
+
+    const primaryFont = branding.typography?.fontFamilies?.primary || branding.fonts?.[0]?.family;
+    if (primaryFont) {
+      brandStyleGuide += `\n- Primary Font: ${primaryFont}`;
+    }
+
+    const secondaryFont = branding.typography?.fontFamilies?.secondary || branding.fonts?.[1]?.family;
+    if (secondaryFont) {
+      brandStyleGuide += `\n- Secondary Font: ${secondaryFont}`;
+    }
+
+    if (branding.personality?.tone) {
+      brandStyleGuide += `\n- Brand Tone: ${branding.personality.tone}`;
+    }
+
+    if (branding.personality?.energy) {
+      brandStyleGuide += `\n- Brand Energy: ${branding.personality.energy}`;
+    }
+  }
+
   const prompt = `You are an expert web developer specializing in high-converting landing pages. Create a complete, standalone HTML page with inline CSS based on the following specification.
+
+⚠️ IMPORTANT: Implement the spec EXACTLY as written. Do not add features, claims, or content not present in the spec below.
+
+${brandScreenshotUrl ? '⚠️ VISUAL BRAND REFERENCE: Review the screenshot of the original brand website above. Your design MUST visually match that style - same color palette, typography hierarchy, spacing patterns, and overall aesthetic. Think of this landing page as a natural extension of their existing website.' : ''}
 
 LANDING PAGE SPECIFICATION:
 ${spec}
@@ -51,7 +115,7 @@ BRAND INFORMATION:
 - Title: ${brandAssets.title}
 - Description: ${brandAssets.description}
 - OG Image: ${brandAssets.ogImage || 'None'}
-- Favicon: ${brandAssets.favicon || 'None'}
+- Favicon: ${brandAssets.favicon || 'None'}${brandStyleGuide}
 
 GENERATED IMAGES (use these in your design):
 ${imageList}
@@ -59,7 +123,22 @@ ${imageList}
 TARGET URL (all CTAs must link here):
 ${targetUrl}
 
-REQUIREMENTS:
+CRITICAL BRAND CONSISTENCY REQUIREMENTS:
+⚠️ STAY ON-BRAND: This landing page MUST match the visual design style of the original website (${targetUrl}).
+- Use the EXACT brand colors provided above - do not invent new colors
+- Use the brand's typography/fonts if provided
+- Match the brand's tone and personality (${branding?.personality?.tone || 'professional'})
+- Study the OG Image if provided to understand the brand's visual style
+- The design should feel like a natural extension of the original website
+
+⚠️ MINIMIZE GRADIENT USAGE:
+- Do NOT overuse gradients - use them sparingly and only where appropriate
+- Prefer solid colors from the brand palette
+- If you use gradients, make them subtle and on-brand (using brand colors)
+- Avoid flashy rainbow or multi-color gradients
+- The design should be clean and professional, not overly decorative
+
+TECHNICAL REQUIREMENTS:
 1. Create a complete HTML document starting with <!DOCTYPE html>
 2. Include all CSS inline in a <style> tag in the <head>
 3. Use modern, clean design with excellent typography
@@ -72,33 +151,63 @@ REQUIREMENTS:
 10. NO JavaScript - pure HTML and CSS only
 11. Use a conversion-focused layout with clear visual hierarchy
 12. Include compelling copy based on the spec
-13. Make it visually stunning with gradients, shadows, and modern effects
 
-DESIGN STYLE:
-- Modern, clean, and professional
-- Use bold typography for headlines
-- Ample white space
-- Strategic use of color (brand-appropriate)
-- Clear CTAs that stand out
+DESIGN STYLE GUIDELINES:
+- Modern, clean, and professional (matching the brand)
+- Use bold typography for headlines (using brand fonts if provided)
+- Ample white space for readability
+- Use ONLY the brand colors provided - no random colors
+- Clear CTAs that stand out (using brand primary/accent color)
 - Social proof elements if mentioned in spec
 - Feature highlights with icons or imagery
+- Subtle shadows and effects (avoid over-designing)
+- Clean, minimal aesthetic that respects the brand identity
 
 Return ONLY the complete HTML code. No explanations, no markdown code blocks, just the raw HTML starting with <!DOCTYPE html>.`;
 
   console.log('[Claude HTML] Starting Claude Opus 4.5 API call with streaming...');
   console.log('[Claude HTML] Model: claude-opus-4-5-20251101, Max tokens: 35000');
+  console.log('[Claude HTML] Brand screenshot available:', !!brandScreenshotUrl);
   const startTime = Date.now();
+
+  // Build messages array with vision support
+  const messages: Anthropic.MessageParam[] = [];
+
+  if (brandScreenshotUrl) {
+    // Use vision to show brand website screenshot
+    messages.push({
+      role: 'user',
+      content: [
+        {
+          type: 'image',
+          source: {
+            type: 'url',
+            url: brandScreenshotUrl,
+          },
+        },
+        {
+          type: 'text',
+          text: 'This is a screenshot of the original brand website. Study the visual design, layout patterns, spacing, color usage, and overall aesthetic. Your generated landing page should match this visual style.'
+        },
+        {
+          type: 'text',
+          text: prompt,
+        },
+      ],
+    });
+  } else {
+    // Fallback: text-only (existing behavior)
+    messages.push({
+      role: 'user',
+      content: prompt,
+    });
+  }
 
   // Use streaming to avoid 10-minute timeout for long requests
   const stream = anthropic.messages.stream({
     model: 'claude-opus-4-5-20251101',
     max_tokens: 35000,
-    messages: [
-      {
-        role: 'user',
-        content: prompt,
-      },
-    ],
+    messages: messages,
   });
 
   console.log('[Claude HTML] Stream created, waiting for chunks...');

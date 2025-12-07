@@ -31,7 +31,7 @@ export async function perplexitySearchStep({
           content: query,
         },
       ],
-      max_tokens: 1000,
+      max_tokens: 2000,
       temperature: 0.2,
       search_domain_filter: searchFocus === 'internet' ? undefined : [searchFocus],
       return_citations: true,

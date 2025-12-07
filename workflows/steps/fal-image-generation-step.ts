@@ -118,7 +118,17 @@ async function generateWithImageToImage(
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Fal image-to-image error: ${response.status} - ${errorText}`);
+
+      const isDownloadError = errorText.includes('download') ||
+                              errorText.includes('403') ||
+                              errorText.includes('404') ||
+                              response.status === 422;
+
+      const errorMessage = isDownloadError
+        ? `FAL cannot access image URLs (422/download error). Ensure images are publicly accessible. Details: ${errorText}`
+        : `Fal image-to-image error: ${response.status} - ${errorText}`;
+
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();
@@ -166,7 +176,17 @@ async function generateWithTextToImage(
 
     if (!response.ok) {
       const errorText = await response.text();
-      throw new Error(`Fal text-to-image error: ${response.status} - ${errorText}`);
+
+      const isDownloadError = errorText.includes('download') ||
+                              errorText.includes('403') ||
+                              errorText.includes('404') ||
+                              response.status === 422;
+
+      const errorMessage = isDownloadError
+        ? `FAL cannot access image URLs (422/download error). Ensure images are publicly accessible. Details: ${errorText}`
+        : `Fal text-to-image error: ${response.status} - ${errorText}`;
+
+      throw new Error(errorMessage);
     }
 
     const data = await response.json();

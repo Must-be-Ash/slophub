@@ -9,6 +9,37 @@ It lets you monetize your endpoints with micro payments (no transaction fees) an
 
 ///////
 
+https://toycompany.com/
+
+I want to target parent to buy toys for their kids for Christmas. We have legos, puzzles, plush toys, Music toys... Books, Building & Construction toys, Figures & Collectibles, Games... you name it
+
+we have custom gift wrapping service. Each item can be beautifully wrapped for $3.99 per gift, complete with ribbon and an optional complimentary gift card for your message.
+
+We have Holiday Bundles specially for Christmas.
+
+ we have toys for all ages:
+Age: Baby (0-1)
+Age: Toddler (2-3)
+Age: Preschool (3-5)
+Age: Young Kids (5-8)
+Age: Big Kids (8-14)
+Age: Feeling Grown-up (14+ yrs)
+
+here are our locations and contact:
+Granville Island (Kid's Market)
+1496 Cartwright Street, Vancouver BC
+(604) 684-0076
+
+Main Street
+3298 Main Street, Vancouver BC
+(604) 875-0065
+
+OPEN DAILY: 10am - 6pm
+
+///////
+
+https://manifold.xyz/
+
 I want to encourage artists (painters, and musicians and graphic designers) to mint their artworks as NFTs onchain. We have tools that lets anyone create NFTs without any technical knowledge, and you can easily deploy your own contract using our service at manifold. We also have an upcoming SDK that lets people bring the mint to mechanism to their own site so they could send their fans and supporters or customers to their own site and have them mint the NFTs on their own site.
 
 ///////
