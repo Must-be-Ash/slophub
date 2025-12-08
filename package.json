@@ -15,6 +15,7 @@
     "@coinbase/cdp-core": "^0.0.60",
     "@coinbase/cdp-hooks": "^0.0.60",
     "@coinbase/cdp-react": "^0.0.60",
+    "@coinbase/x402": "^0.7.3",
     "@google/genai": "^1.28.0",
     "@vercel/analytics": "^1.6.1",
     "@vercel/blob": "^2.0.0",
@@ -32,7 +33,9 @@
     "tailwind-merge": "^3.4.0",
     "viem": "^2.41.2",
     "workflow": "4.0.1-beta.7",
+    "x402": "^0.7.3",
     "x402-fetch": "^0.7.3",
+    "x402-next": "^0.7.3",
     "zod": "^4.1.12"
   },
   "devDependencies": {

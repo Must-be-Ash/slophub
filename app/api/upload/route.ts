@@ -4,6 +4,31 @@ import { validateAndResizeImage, getImageDimensions } from '@/lib/image-utils';
 
 export async function POST(request: Request) {
   try {
+    // ORIGIN VALIDATION - Only allow uploads from your frontend
+    const origin = request.headers.get('origin');
+    const referer = request.headers.get('referer');
+
+    const allowedOrigins = [
+      'https://www.slophub.xyz',
+      'https://slophub.xyz',
+      'http://localhost:3000', // For local development
+    ];
+
+    // Check origin header first (most reliable)
+    const isValidOrigin = origin && allowedOrigins.includes(origin);
+
+    // Fallback to referer header (in case origin is missing)
+    const isValidReferer = referer && allowedOrigins.some(allowed => referer.startsWith(allowed));
+
+    if (!isValidOrigin && !isValidReferer) {
+      console.error('[Upload] ❌ Unauthorized origin:', { origin, referer });
+      return NextResponse.json(
+        { error: 'Unauthorized - uploads only allowed from slophub.xyz' },
+        { status: 403 }
+      );
+    }
+
+    console.log('[Upload] ✓ Valid origin:', origin || referer);
     console.log('[Upload] Received upload request');
     const formData = await request.formData();
     const file = formData.get('image') as File;

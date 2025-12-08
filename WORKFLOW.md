@@ -1,5 +1,19 @@
 # Blog Agent Workflow Documentation
 
+Scrape Website & Upload Assets
+Research Campaign Data
+Generate Landing Page Spec
+Generate Landing Page Images
+Generate HTML with Claude Opus 4.5
+Capture Preview Screenshot
+
+- Claude API (HTML generation)
+- OpenAi landing page spec writing
+- Perplexity search
+- Firecrawl scraping
+- Fal image generation 
+- Screenshot API 
+
 ## Overview
 
 Blog Agent is an AI-powered landing page generator that creates conversion-focused landing pages from a brand URL and campaign description. The application uses the Vercel Workflow framework for durable, retryable execution and generates dynamic landing pages accessible at `/landing-{runId}`.

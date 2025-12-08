@@ -1,8 +1,45 @@
 import { NextResponse } from 'next/server';
 import { put } from '@vercel/blob';
+import {
+  createPaymentRequirements,
+  verifyPayment,
+  settlePayment,
+  create402Response,
+} from '@/lib/payment-verification';
+import type { Resource } from 'x402/types';
 
 export async function POST(request: Request) {
   try {
+    // PAYMENT VERIFICATION
+    const paymentHeader = request.headers.get('X-PAYMENT');
+    const requestUrl = `${new URL(request.url).origin}${new URL(request.url).pathname}` as Resource;
+
+    const paymentRequirements = createPaymentRequirements(
+      '$0.001',
+      'base',
+      requestUrl,
+      'Take and store website screenshot'
+    );
+
+    const verificationResult = await verifyPayment(paymentHeader, paymentRequirements);
+
+    if (!verificationResult.isValid) {
+      console.log('[Screenshot] Payment required - returning 402');
+      return NextResponse.json(
+        create402Response(paymentRequirements, verificationResult.error, verificationResult.payer),
+        { status: 402 }
+      );
+    }
+
+    console.log('[Screenshot] ✓ Payment verified from:', verificationResult.payer);
+
+    // Settle payment asynchronously
+    settlePayment(paymentHeader!, paymentRequirements).then(result => {
+      if (result.success) {
+        console.log('[Screenshot] ✓ Payment settled:', result.txHash);
+      }
+    });
+
     const body = await request.json();
 
     if (!body.url || typeof body.url !== 'string') {

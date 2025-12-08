@@ -2,12 +2,53 @@ import { start } from 'workflow/api';
 import { untitled4Workflow } from '@/workflows/untitled-4';
 import { NextResponse } from 'next/server';
 import { checkRateLimit, getClientIdentifier } from '@/lib/rate-limit';
+import {
+  createPaymentRequirements,
+  verifyPayment,
+  settlePayment,
+  create402Response,
+  createPaymentResponseHeader,
+} from '@/lib/payment-verification';
+import type { Resource } from 'x402/types';
 
 // Increase timeout for workflow execution (max 300s on Hobby/Pro, 900s on Enterprise)
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
   try {
+    // 0. PAYMENT VERIFICATION (BEFORE EVERYTHING ELSE)
+    const paymentHeader = request.headers.get('X-PAYMENT');
+    const requestUrl = `${new URL(request.url).origin}${new URL(request.url).pathname}` as Resource;
+
+    const paymentRequirements = createPaymentRequirements(
+      '$0.01',        // Price in USDC
+      'base',         // Base mainnet
+      requestUrl,     // Resource URL
+      'Generate AI landing page with workflow execution'
+    );
+
+    // Verify payment
+    const verificationResult = await verifyPayment(paymentHeader, paymentRequirements);
+
+    if (!verificationResult.isValid) {
+      console.log('[API] Payment required - returning 402');
+      return NextResponse.json(
+        create402Response(paymentRequirements, verificationResult.error, verificationResult.payer),
+        { status: 402 }
+      );
+    }
+
+    console.log('[API] ✓ Payment verified from:', verificationResult.payer);
+
+    // Settle payment asynchronously (don't block request)
+    settlePayment(paymentHeader!, paymentRequirements).then(result => {
+      if (result.success) {
+        console.log('[API] ✓ Payment settled:', result.txHash);
+      } else {
+        console.error('[API] ✗ Payment settlement failed:', result.error);
+      }
+    });
+
     // 1. CONTENT-TYPE VALIDATION
     const contentType = request.headers.get('content-type');
     if (!contentType || !contentType.includes('application/json')) {
@@ -110,7 +151,7 @@ export async function POST(request: Request) {
       timestamp: Date.now(),
     });
 
-    // 7. RETURN SUCCESS WITH RATE LIMIT HEADERS
+    // 7. RETURN SUCCESS WITH RATE LIMIT AND PAYMENT HEADERS
     return NextResponse.json(
       {
         success: true,
@@ -122,6 +163,9 @@ export async function POST(request: Request) {
           'X-RateLimit-Limit': rateLimit.limit.toString(),
           'X-RateLimit-Remaining': rateLimit.remaining.toString(),
           'X-RateLimit-Reset': rateLimit.reset.toString(),
+          // Add payment confirmation header
+          'X-PAYMENT-RESPONSE': createPaymentResponseHeader('pending'),
+          'Access-Control-Expose-Headers': 'X-PAYMENT-RESPONSE, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset',
         },
       }
     );

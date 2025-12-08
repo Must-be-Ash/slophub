@@ -278,9 +278,23 @@ export default function Home() {
       // Step 8: Redirect to workflow status page
       router.push(`/workflow/${runId}`);
 
-    } catch (err) {
-      console.error('[Workflow] Error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to start workflow');
+    } catch (error) {
+      console.error('[Client] Failed to create content:', error);
+
+      let errorMessage = 'An unknown error occurred';
+      if (error instanceof Error) {
+        if (error.message.includes('402') || error.message.includes('Payment')) {
+          errorMessage = 'Payment failed. Please ensure you have sufficient USDC balance ($0.01) on Base network.';
+        } else if (error.message.includes('rejected')) {
+          errorMessage = 'Payment was rejected by your wallet';
+        } else if (error.message.includes('Insufficient funds')) {
+          errorMessage = 'Insufficient USDC balance. You need at least $0.01 USDC on Base.';
+        } else {
+          errorMessage = error.message;
+        }
+      }
+
+      setError(errorMessage);
       setLoading(false);
     }
   };
