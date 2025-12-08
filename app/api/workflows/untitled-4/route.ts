@@ -1,25 +1,87 @@
 import { start } from 'workflow/api';
 import { untitled4Workflow } from '@/workflows/untitled-4';
 import { NextResponse } from 'next/server';
+import { checkRateLimit, getClientIdentifier } from '@/lib/rate-limit';
 
 // Increase timeout for workflow execution (max 300s on Hobby/Pro, 900s on Enterprise)
 export const maxDuration = 300;
 
 export async function POST(request: Request) {
   try {
-    const body = await request.json();
-
-    // Validate URL
-    if (!body.url || typeof body.url !== 'string') {
+    // 1. CONTENT-TYPE VALIDATION
+    const contentType = request.headers.get('content-type');
+    if (!contentType || !contentType.includes('application/json')) {
       return NextResponse.json(
-        { error: 'URL is required and must be a string' },
+        { error: 'Content-Type must be application/json' },
+        { status: 415 }
+      );
+    }
+
+    const body = await request.json();
+    const { url, campaignDescription, imageUrl, userId } = body;
+
+    // 2. RATE LIMITING
+    const identifier = getClientIdentifier(request, userId);
+    const rateLimit = checkRateLimit(identifier, {
+      maxRequests: 10,
+      windowMs: 3600000, // 10 requests per hour
+    });
+
+    if (!rateLimit.success) {
+      return NextResponse.json(
+        {
+          error: 'Rate limit exceeded',
+          message: `Too many requests. Please try again after ${new Date(rateLimit.reset).toISOString()}`,
+          retryAfter: Math.ceil((rateLimit.reset - Date.now()) / 1000),
+        },
+        {
+          status: 429,
+          headers: {
+            'X-RateLimit-Limit': rateLimit.limit.toString(),
+            'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+            'X-RateLimit-Reset': rateLimit.reset.toString(),
+            'Retry-After': Math.ceil((rateLimit.reset - Date.now()) / 1000).toString(),
+          },
+        }
+      );
+    }
+
+    // 3. INPUT VALIDATION
+    if (!url || typeof url !== 'string' || url.length < 5 || url.length > 500) {
+      return NextResponse.json(
+        { error: 'Invalid URL' },
         { status: 400 }
       );
     }
 
-    // Basic URL validation
+    if (!campaignDescription || typeof campaignDescription !== 'string' || campaignDescription.length < 20 || campaignDescription.length > 1000) {
+      return NextResponse.json(
+        { error: 'Invalid campaign description (must be 20-1000 characters)' },
+        { status: 400 }
+      );
+    }
+
+    if (imageUrl && (typeof imageUrl !== 'string' || imageUrl.length > 500)) {
+      return NextResponse.json(
+        { error: 'Invalid image URL' },
+        { status: 400 }
+      );
+    }
+
+    // 4. SANITIZATION (XSS prevention)
+    const sanitizedUrl = url.replace(/<[^>]*>/g, '').trim();
+    const sanitizedDescription = campaignDescription.replace(/<[^>]*>/g, '').trim();
+
+    if (!sanitizedUrl || !sanitizedDescription) {
+      return NextResponse.json(
+        { error: 'Invalid input after sanitization' },
+        { status: 400 }
+      );
+    }
+
+    // 5. URL FORMAT VALIDATION
     try {
-      new URL(body.url);
+      new URL(sanitizedUrl);
     } catch {
       return NextResponse.json(
         { error: 'Invalid URL format' },
@@ -27,31 +89,14 @@ export async function POST(request: Request) {
       );
     }
 
-    // Validate campaign description
-    if (!body.campaignDescription || typeof body.campaignDescription !== 'string') {
-      return NextResponse.json(
-        { error: 'Campaign description is required and must be a string' },
-        { status: 400 }
-      );
-    }
-
-    if (body.campaignDescription.trim().length < 20) {
-      return NextResponse.json(
-        { error: 'Campaign description must be at least 20 characters' },
-        { status: 400 }
-      );
-    }
-
-    // Optional imageUrl validation
-    if (body.imageUrl && typeof body.imageUrl !== 'string') {
-      return NextResponse.json(
-        { error: 'imageUrl must be a string if provided' },
-        { status: 400 }
-      );
-    }
-
-    // Start the workflow execution (we'll get runId from the result)
-    const run = await start(untitled4Workflow, [body]);
+    // 6. START WORKFLOW (with sanitized inputs)
+    console.log('[API] Starting workflow for:', sanitizedUrl);
+    const run = await start(untitled4Workflow, [{
+      url: sanitizedUrl,
+      campaignDescription: sanitizedDescription,
+      imageUrl: imageUrl, // Optional, already validated
+      userId: userId, // For tracking
+    }]);
 
     // Import cache to initialize the workflow
     const { addStepUpdate } = await import('@/lib/workflow-cache');
@@ -65,11 +110,21 @@ export async function POST(request: Request) {
       timestamp: Date.now(),
     });
 
-    return NextResponse.json({
-      success: true,
-      runId: run.runId,
-      message: 'Workflow started successfully',
-    });
+    // 7. RETURN SUCCESS WITH RATE LIMIT HEADERS
+    return NextResponse.json(
+      {
+        success: true,
+        runId: run.runId,
+        message: 'Landing page generation started',
+      },
+      {
+        headers: {
+          'X-RateLimit-Limit': rateLimit.limit.toString(),
+          'X-RateLimit-Remaining': rateLimit.remaining.toString(),
+          'X-RateLimit-Reset': rateLimit.reset.toString(),
+        },
+      }
+    );
   } catch (error) {
     console.error('Workflow start error:', error);
     return NextResponse.json(

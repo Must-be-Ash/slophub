@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { ExternalLink, Calendar, Globe } from 'lucide-react';
+import { Header } from '@/components/Header';
 
 interface Workflow {
   _id: string;
@@ -70,28 +71,7 @@ export default function GalleryPage() {
       />
 
       {/* Header */}
-      <header className="relative py-6 px-6 border-b border-slate-200 bg-white/50 backdrop-blur-sm">
-        <div className="max-w-7xl mx-auto flex items-center justify-between">
-          <Link href="/" className="inline-flex items-center gap-3 group">
-            <Image
-              src="/logo-ts.svg"
-              alt="Slophub"
-              width={60}
-              height={60}
-              className="object-contain"
-            />
-            <span className="text-lg font-semibold text-slate-900 group-hover:text-slate-600 transition-colors" style={{ fontFamily: 'var(--font-caprasimo)' }}>
-              Slophub
-            </span>
-          </Link>
-          <Link
-            href="/"
-            className="px-4 py-2 bg-black text-white text-sm font-medium rounded-xl hover:bg-slate-800 transition-colors"
-          >
-            Create New
-          </Link>
-        </div>
-      </header>
+      <Header />
 
       {/* Main content */}
       <div className="flex-1 px-6 py-12 relative">

@@ -1,6 +1,5 @@
 import { WorkflowStatusClient } from '@/components/workflow-status-client';
-import Link from 'next/link';
-import Image from 'next/image';
+import { Header } from '@/components/Header';
 
 export default async function WorkflowPage({
   params
@@ -47,22 +46,7 @@ export default async function WorkflowPage({
       />
       
       {/* Header */}
-      <header className="relative py-6 px-6">
-        <div className="max-w-5xl mx-auto">
-          <Link href="/" className="inline-flex items-center gap-3 group">
-            <Image
-              src="/logo-ts.svg"
-              alt="Slophub"
-              width={60}
-              height={60}
-              className="object-contain"
-            />
-            <span className="text-lg font-semibold text-slate-900 group-hover:text-slate-600 transition-colors" style={{ fontFamily: 'var(--font-caprasimo)' }}>
-              Slophub
-            </span>
-          </Link>
-        </div>
-      </header>
+      <Header />
 
       {/* Main content */}
       <div className="flex-1 px-6 pb-12 relative">

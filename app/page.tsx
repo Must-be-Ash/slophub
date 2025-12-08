@@ -1,11 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { TextShimmer } from '@/components/ui/text-shimmer';
-import { ArrowRight, Grid3x3 } from 'lucide-react';
+import { ArrowRight } from 'lucide-react';
 import Image from 'next/image';
+import { useIsSignedIn, useCurrentUser } from '@coinbase/cdp-hooks';
+import { AuthButton } from '@coinbase/cdp-react/components/AuthButton';
+import { getCurrentUser, toViemAccount } from '@coinbase/cdp-core';
+import { wrapFetchWithPayment } from 'x402-fetch';
+import { createWalletClient, http, publicActions } from 'viem';
+import { base } from 'viem/chains';
+import { COST_CONFIG } from '@/lib/config';
+import { logPaymentInitiation, logPaymentSettlement, extractTxHashFromPaymentResponse } from '@/lib/payment-logger';
+import { Header } from '@/components/Header';
 
 export default function Home() {
   const [url, setUrl] = useState('');
@@ -18,7 +26,10 @@ export default function Home() {
   const [focused, setFocused] = useState(false);
   const [focusedCampaign, setFocusedCampaign] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
+  const authButtonRef = useRef<HTMLDivElement>(null);
   const router = useRouter();
+  const { isSignedIn } = useIsSignedIn();
+  const { currentUser } = useCurrentUser();
 
   const validateUrl = (url: string): string | null => {
     if (!url.trim()) return 'URL is required';
@@ -123,10 +134,22 @@ export default function Home() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
+    // AUTH CHECK: Require user to be signed in
+    if (!isSignedIn || !currentUser) {
+      console.log('[Form Submit] User not signed in, triggering auth modal');
+      // Trigger the hidden AuthButton to open the Coinbase auth modal
+      const authButton = authButtonRef.current?.querySelector('button');
+      if (authButton) {
+        authButton.click();
+      }
+      return;
+    }
+
     console.log('[Form Submit] Starting submission');
     console.log('[Form Submit] URL:', url);
     console.log('[Form Submit] Campaign description length:', campaignDescription.length);
     console.log('[Form Submit] Reference images:', referenceImages.length, referenceImages.map(i => i.name));
+    console.log('[Form Submit] User wallet:', currentUser.evmAccounts?.[0]);
 
     const urlError = validateUrl(url);
     if (urlError) {
@@ -183,13 +206,59 @@ export default function Home() {
       console.log('[Upload] No reference images provided, skipping upload');
     }
 
-    // Start workflow with optional imageUrl
+    // PAYMENT SETUP: Create wallet client and wrap fetch with x402 payment
     try {
-      const response = await fetch('/api/workflows/untitled-4', {
+      console.log('[Payment] Setting up x402 payment wrapper');
+
+      // Step 1: Get CDP user's EOA account
+      const user = await getCurrentUser();
+      if (!user || !user.evmAccounts || user.evmAccounts.length === 0) {
+        throw new Error('No wallet found. Please sign in again.');
+      }
+
+      const viemAccount = await toViemAccount(user.evmAccounts[0]);
+      console.log('[Payment] Got viem account:', viemAccount.address);
+
+      // Step 2: Create viem wallet client for signing
+      const walletClient = createWalletClient({
+        account: viemAccount,
+        chain: base,
+        transport: http('https://mainnet.base.org'),
+      }).extend(publicActions);
+      console.log('[Payment] Created wallet client on Base network');
+
+      // Step 3: Wrap fetch with x402 payment capability
+      const maxPaymentAmount = BigInt(COST_CONFIG.maxPaymentAmount * 10 ** 6); // Convert to 6 decimals
+      const fetchFunc = wrapFetchWithPayment(
+        fetch,
+        walletClient as any,
+        maxPaymentAmount
+      ) as typeof fetch;
+      console.log('[Payment] Wrapped fetch with payment capability');
+
+      // Step 4: Log payment initiation
+      logPaymentInitiation('Landing Page Generation', COST_CONFIG.landingPageGeneration);
+
+      // Step 5: Start workflow with payment wrapper
+      const response = await fetchFunc('/api/workflows/untitled-4', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ url, campaignDescription, imageUrl }),
+        body: JSON.stringify({
+          url,
+          campaignDescription,
+          imageUrl,
+          userId: viemAccount.address, // Include user ID for rate limiting
+        }),
       });
+
+      console.log('[Workflow] Response status:', response.status);
+
+      // Step 6: Handle response
+      if (response.status === 402) {
+        console.warn('[Payment] Payment required (402), x402-fetch will handle automatically');
+        // The x402-fetch wrapper will retry with payment
+        return;
+      }
 
       if (!response.ok) {
         const data = await response.json();
@@ -197,8 +266,20 @@ export default function Home() {
       }
 
       const { runId } = await response.json();
+      console.log('[Workflow] ✓ Workflow started:', runId);
+
+      // Step 7: Log payment settlement
+      const paymentResponseHeader = response.headers.get('X-PAYMENT-RESPONSE');
+      const txHash = extractTxHashFromPaymentResponse(paymentResponseHeader);
+      if (txHash) {
+        logPaymentSettlement('Landing Page Generation', txHash, COST_CONFIG.landingPageGeneration);
+      }
+
+      // Step 8: Redirect to workflow status page
       router.push(`/workflow/${runId}`);
+
     } catch (err) {
+      console.error('[Workflow] Error:', err);
       setError(err instanceof Error ? err.message : 'Failed to start workflow');
       setLoading(false);
     }
@@ -216,17 +297,7 @@ export default function Home() {
       />
 
       {/* Header */}
-      <header className="relative py-4 px-6">
-        <div className="max-w-7xl mx-auto flex justify-end">
-          <Link
-            href="/gallery"
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-white rounded-xl transition-all"
-          >
-            <Grid3x3 className="h-4 w-4" />
-            Gallery
-          </Link>
-        </div>
-      </header>
+      <Header />
 
       {/* Main content */}
       <div className="flex-1 flex items-center justify-center p-6 relative">
@@ -410,11 +481,11 @@ export default function Home() {
                   duration={1.2}
                   className="text-base font-medium [--base-color:theme(colors.slate.500)] [--base-gradient-color:theme(colors.slate.300)]"
                 >
-                  Creating your landing page...
+                  {isSignedIn ? 'Processing payment & creating page...' : 'Creating your landing page...'}
                 </TextShimmer>
               ) : (
                 <>
-                  Generate Landing Page
+                  {isSignedIn ? `Generate ($${COST_CONFIG.landingPageGeneration} USDC)` : 'Sign In to Generate'}
                   <ArrowRight className="h-4 w-4" />
                 </>
               )}
@@ -443,6 +514,11 @@ export default function Home() {
       <footer className="py-6 text-center text-sm text-slate-400 relative">
         Powered by <span style={{ fontFamily: 'var(--font-caprasimo)' }}>Slophub</span>
       </footer>
+
+      {/* Hidden AuthButton for programmatic triggering */}
+      <div ref={authButtonRef} className="hidden">
+        <AuthButton />
+      </div>
     </main>
   );
 }
