@@ -1,4 +1,6 @@
 import Anthropic from '@anthropic-ai/sdk';
+import { put } from '@vercel/blob';
+import { validateAndResizeImage, getImageDimensions } from '../../lib/image-utils';
 
 export async function claudeGenerateHtmlStep({
   spec,
@@ -170,11 +172,75 @@ Return ONLY the complete HTML code. No explanations, no markdown code blocks, ju
   console.log('[Claude HTML] Brand screenshot available:', !!brandScreenshotUrl);
   const startTime = Date.now();
 
+  // PRE-FLIGHT VALIDATION: Check screenshot dimensions before passing to Claude
+  let validatedScreenshotUrl = brandScreenshotUrl;
+
+  if (brandScreenshotUrl) {
+    try {
+      console.log('[Claude HTML] Validating brand screenshot dimensions...');
+
+      // Fetch the screenshot to check dimensions
+      const screenshotResponse = await fetch(brandScreenshotUrl);
+      if (!screenshotResponse.ok) {
+        console.warn(`[Claude HTML] ⚠️ Failed to fetch screenshot for validation: ${screenshotResponse.status}`);
+        console.warn('[Claude HTML] Continuing with text-only generation (no screenshot)');
+        validatedScreenshotUrl = undefined;
+      } else {
+        const screenshotBuffer = Buffer.from(await screenshotResponse.arrayBuffer());
+
+        // Extract dimensions
+        const dims = await getImageDimensions(screenshotBuffer);
+        console.log(`[Claude HTML] Screenshot dimensions: ${dims.width}x${dims.height}`);
+
+        // Check if oversized (> 4096px safe limit)
+        if (dims.width > 4096 || dims.height > 4096) {
+          console.log('[Claude HTML] ⚠️ Screenshot exceeds safe dimensions, resizing...');
+
+          // Resize to fit within Claude's limits
+          const processed = await validateAndResizeImage(
+            screenshotBuffer,
+            4096, // Safe limit with headroom from 8000px
+            85    // Quality for screenshots
+          );
+
+          console.log(`[Claude HTML] ✓ Resized from ${dims.width}x${dims.height} to ${processed.metadata.width}x${processed.metadata.height}`);
+
+          // Re-upload resized version to Blob
+          const blobToken = process.env.BLOB_READ_WRITE_TOKEN;
+          if (!blobToken) {
+            console.warn('[Claude HTML] ⚠️ No BLOB_READ_WRITE_TOKEN for re-upload, continuing without screenshot');
+            validatedScreenshotUrl = undefined;
+          } else {
+            const resizedBlob = new Blob([new Uint8Array(processed.buffer)], { type: 'image/png' });
+            const blobResult = await put(
+              `screenshots/resized-landing-${Date.now()}.png`,
+              resizedBlob,
+              {
+                access: 'public',
+                token: blobToken,
+              }
+            );
+
+            console.log(`[Claude HTML] ✓ Re-uploaded resized screenshot: ${blobResult.url}`);
+            validatedScreenshotUrl = blobResult.url;
+          }
+        } else {
+          console.log('[Claude HTML] ✓ Screenshot dimensions within safe limits');
+        }
+      }
+    } catch (error) {
+      console.error('[Claude HTML] ✗ Screenshot validation failed:', error);
+      console.warn('[Claude HTML] Continuing with text-only generation (no screenshot)');
+      validatedScreenshotUrl = undefined;
+    }
+  }
+
   // Build messages array with vision support
   const messages: Anthropic.MessageParam[] = [];
 
-  if (brandScreenshotUrl) {
-    // Use vision to show brand website screenshot
+  if (validatedScreenshotUrl) {
+    // Use vision to show brand website screenshot (validated and resized if needed)
+    console.log(`[Claude HTML] Using validated screenshot URL: ${validatedScreenshotUrl}`);
     messages.push({
       role: 'user',
       content: [
@@ -182,7 +248,7 @@ Return ONLY the complete HTML code. No explanations, no markdown code blocks, ju
           type: 'image',
           source: {
             type: 'url',
-            url: brandScreenshotUrl,
+            url: validatedScreenshotUrl,
           },
         },
         {
@@ -196,7 +262,8 @@ Return ONLY the complete HTML code. No explanations, no markdown code blocks, ju
       ],
     });
   } else {
-    // Fallback: text-only (existing behavior)
+    // Fallback: text-only (no screenshot available or validation failed)
+    console.log('[Claude HTML] No screenshot available, using text-only generation');
     messages.push({
       role: 'user',
       content: prompt,

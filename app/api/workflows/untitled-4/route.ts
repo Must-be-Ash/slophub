@@ -91,11 +91,11 @@ export async function POST(request: Request) {
 
     // 6. START WORKFLOW (with sanitized inputs)
     console.log('[API] Starting workflow for:', sanitizedUrl);
+    console.log('[API] User ID for tracking:', userId || 'anonymous');
     const run = await start(untitled4Workflow, [{
       url: sanitizedUrl,
       campaignDescription: sanitizedDescription,
       imageUrl: imageUrl, // Optional, already validated
-      userId: userId, // For tracking
     }]);
 
     // Import cache to initialize the workflow

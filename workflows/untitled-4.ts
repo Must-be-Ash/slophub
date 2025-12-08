@@ -8,7 +8,7 @@
  * and stream progress updates for real-time monitoring
  */
 
-import { getWritable, getWorkflowMetadata } from 'workflow';
+import { getWritable, getWorkflowMetadata, sleep } from 'workflow';
 import { firecrawlScrapeStep } from './steps/scrape-step';
 import { perplexitySearchStep } from './steps/search-step';
 import { generateTextStep } from './steps/generate-text-step';
@@ -611,7 +611,7 @@ Return a detailed specification with all sections clearly outlined.`,
 
     // Wait 3 seconds to ensure the page is available (avoid race condition)
     console.log('[Workflow] Waiting 3 seconds for page to be fully available...');
-    await new Promise(resolve => setTimeout(resolve, 3000));
+    await sleep('3s');
 
     // Import and call screenshot step
     const { screenshotStep } = await import('./steps/screenshot-step');

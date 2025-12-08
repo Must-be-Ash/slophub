@@ -1,5 +1,7 @@
 import crypto from 'crypto';
 
+import { sleep } from 'workflow';
+
 export async function deployToVercelStep({
   files,
   projectName,
@@ -85,7 +87,7 @@ export async function deployToVercelStep({
   const maxAttempts = 60; // 60 seconds max
 
   while (readyState !== 'READY' && attempts < maxAttempts) {
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await sleep('1s');
 
     const statusUrl = teamId
       ? `https://api.vercel.com/v13/deployments/${deployment.id}?teamId=${teamId}`

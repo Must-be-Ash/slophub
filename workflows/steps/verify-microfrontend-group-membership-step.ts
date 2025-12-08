@@ -1,3 +1,5 @@
+import { sleep } from 'workflow';
+
 export async function verifyMicrofrontendGroupMembershipStep({
   projectName,
   microfrontendsGroupId,
@@ -41,7 +43,7 @@ export async function verifyMicrofrontendGroupMembershipStep({
 
         if (attempt < maxAttempts) {
           console.log(`Waiting ${delayMs}ms before retry...`);
-          await new Promise(resolve => setTimeout(resolve, delayMs));
+          await sleep(`${delayMs}ms`);
           continue;
         }
 
@@ -71,14 +73,14 @@ export async function verifyMicrofrontendGroupMembershipStep({
 
       if (attempt < maxAttempts) {
         console.log(`Waiting ${delayMs}ms before checking again...`);
-        await new Promise(resolve => setTimeout(resolve, delayMs));
+        await sleep(`${delayMs}ms`);
       }
     } catch (error) {
       console.error(`Error checking group membership (attempt ${attempt}/${maxAttempts}):`, error);
 
       if (attempt < maxAttempts) {
         console.log(`Waiting ${delayMs}ms before retry...`);
-        await new Promise(resolve => setTimeout(resolve, delayMs));
+        await sleep(`${delayMs}ms`);
       } else {
         throw error;
       }

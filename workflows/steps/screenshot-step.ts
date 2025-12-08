@@ -1,10 +1,11 @@
 import { put } from '@vercel/blob';
+import { validateAndResizeImage, getImageDimensions } from '../../lib/image-utils';
 
 export async function screenshotStep({
   url,
 }: {
   url: string;
-}): Promise<{ screenshotUrl: string }> {
+}): Promise<{ screenshotUrl: string; dimensions: { width: number; height: number } }> {
   'use step';
 
   console.log('[Screenshot] Starting screenshot capture for URL:', url);
@@ -17,10 +18,9 @@ export async function screenshotStep({
   screenshotApiUrl.searchParams.set('output', 'image');
   screenshotApiUrl.searchParams.set('file_type', 'png');
   screenshotApiUrl.searchParams.set('wait_for_event', 'load');
-  screenshotApiUrl.searchParams.set('full_page', 'true');
   screenshotApiUrl.searchParams.set('fresh', 'true');
   screenshotApiUrl.searchParams.set('width', '1280');
-  screenshotApiUrl.searchParams.set('height', '720');
+  screenshotApiUrl.searchParams.set('height', '720'); // Viewport height, not full page
 
   // Use screenshotapi token if available, otherwise try without auth
   const screenshotToken = process.env.SCREENSHOTAPI_TOKEN;
@@ -56,29 +56,46 @@ export async function screenshotStep({
     }
 
     const imageBuffer = await response.arrayBuffer();
-    const imageSizeKB = (imageBuffer.byteLength / 1024).toFixed(2);
-    console.log(`[Screenshot] Received image: ${imageSizeKB} KB`);
+    console.log(`[Screenshot] Received image: ${(imageBuffer.byteLength / 1024).toFixed(2)} KB`);
 
-    const imageBlob = new Blob([imageBuffer], { type: 'image/png' });
+    // Extract dimensions BEFORE processing
+    const originalDims = await getImageDimensions(Buffer.from(imageBuffer));
+    console.log('[Screenshot] Original dimensions:', originalDims);
 
-    // Upload to Vercel Blob
-    const blobFilename = `screenshots/landing-${Date.now()}.png`;
-    console.log('[Screenshot] Uploading to Vercel Blob:', blobFilename);
-
-    const blobResult = await put(
-      blobFilename,
-      imageBlob,
-      {
-        access: 'public',
-        token: blobToken,
-      }
+    // Validate and resize if needed (max 4096px - safe limit)
+    const processed = await validateAndResizeImage(
+      Buffer.from(imageBuffer),
+      4096, // Safe limit with headroom
+      85    // Slightly lower quality for screenshots (file size reduction)
     );
 
+    if (processed.metadata.wasResized) {
+      console.log(`[Screenshot] ⚠️ Image was resized from ${originalDims.width}x${originalDims.height} to ${processed.metadata.width}x${processed.metadata.height}`);
+    }
+
+    // Upload processed image to Vercel Blob
+    const imageBlob = new Blob([new Uint8Array(processed.buffer)], { type: 'image/png' });
+    const blobFilename = `screenshots/landing-${Date.now()}.png`;
+
+    console.log('[Screenshot] Uploading to Vercel Blob:', blobFilename);
+
+    const blobResult = await put(blobFilename, imageBlob, {
+      access: 'public',
+      token: blobToken,
+    });
+
     console.log('[Screenshot] ✓ Upload successful:', blobResult.url);
-    console.log('[Screenshot] Blob pathname:', blobResult.pathname);
+    console.log('[Screenshot] Final dimensions:', {
+      width: processed.metadata.width,
+      height: processed.metadata.height,
+    });
 
     return {
       screenshotUrl: blobResult.url,
+      dimensions: {
+        width: processed.metadata.width,
+        height: processed.metadata.height,
+      },
     };
   } catch (error) {
     console.error('[Screenshot] Screenshot capture failed:', error);

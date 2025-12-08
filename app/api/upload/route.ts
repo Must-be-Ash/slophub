@@ -1,5 +1,6 @@
 import { put } from '@vercel/blob';
 import { NextResponse } from 'next/server';
+import { validateAndResizeImage, getImageDimensions } from '@/lib/image-utils';
 
 export async function POST(request: Request) {
   try {
@@ -47,12 +48,34 @@ export async function POST(request: Request) {
       );
     }
 
+    console.log('[Upload] Processing image...');
+
+    // Convert File to Buffer
+    const arrayBuffer = await file.arrayBuffer();
+    const imageBuffer = Buffer.from(arrayBuffer);
+
+    // Extract original dimensions
+    const originalDims = await getImageDimensions(imageBuffer);
+    console.log(`[Upload] Original dimensions: ${originalDims.width}x${originalDims.height}`);
+
+    // Validate and resize if needed (max 4096px - safe limit)
+    const processed = await validateAndResizeImage(
+      imageBuffer,
+      4096, // Safe limit with headroom
+      90    // Good quality for user uploads
+    );
+
+    if (processed.metadata.wasResized) {
+      console.log(`[Upload] ⚠️ Image was resized from ${originalDims.width}x${originalDims.height} to ${processed.metadata.width}x${processed.metadata.height}`);
+    }
+
     console.log('[Upload] Uploading to Vercel Blob...');
 
-    // Upload to Vercel Blob
+    // Upload processed image to Vercel Blob
+    const processedBlob = new Blob([new Uint8Array(processed.buffer)], { type: file.type });
     const blob = await put(
       `user-uploads/reference-${Date.now()}.${file.name.split('.').pop()}`,
-      file,
+      processedBlob,
       {
         access: 'public',
         token: blobToken,
@@ -60,10 +83,16 @@ export async function POST(request: Request) {
     );
 
     console.log('[Upload] ✓ Upload successful:', blob.url);
+    console.log(`[Upload] Final dimensions: ${processed.metadata.width}x${processed.metadata.height}`);
 
     return NextResponse.json({
       success: true,
       blobUrl: blob.url,
+      dimensions: {
+        width: processed.metadata.width,
+        height: processed.metadata.height,
+      },
+      wasResized: processed.metadata.wasResized,
     });
   } catch (error) {
     console.error('Image upload error:', error);

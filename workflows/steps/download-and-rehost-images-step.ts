@@ -1,4 +1,5 @@
 import { put } from '@vercel/blob';
+import { validateAndResizeImage, getImageDimensions } from '../../lib/image-utils';
 
 interface DownloadAndRehostInput {
   imageUrls: string[];
@@ -9,6 +10,8 @@ interface DownloadAndRehostOutput {
     originalUrl: string;
     blobUrl: string;
     name: string;
+    dimensions: { width: number; height: number };
+    wasResized: boolean;
   }>;
   failedUrls: Array<{
     originalUrl: string;
@@ -65,27 +68,53 @@ export async function downloadAndRehostImagesStep(
       const blob = await response.blob();
       console.log(`[Download & Rehost] Downloaded ${blob.size} bytes, content-type: ${contentType}`);
 
+      // Convert to Buffer for image processing
+      const arrayBuffer = await blob.arrayBuffer();
+      const imageBuffer = Buffer.from(arrayBuffer);
+
+      // Extract original dimensions
+      const originalDims = await getImageDimensions(imageBuffer);
+      console.log(`[Download & Rehost] Original dimensions: ${originalDims.width}x${originalDims.height}`);
+
+      // Validate and resize if needed (max 4096px - safe limit)
+      const processed = await validateAndResizeImage(
+        imageBuffer,
+        4096, // Safe limit with headroom
+        90    // Good quality for brand assets
+      );
+
+      if (processed.metadata.wasResized) {
+        console.log(`[Download & Rehost] ⚠️ Image was resized from ${originalDims.width}x${originalDims.height} to ${processed.metadata.width}x${processed.metadata.height}`);
+      }
+
       // Generate filename from URL or index
       const urlParts = new URL(url);
       const pathParts = urlParts.pathname.split('/');
       const filename = pathParts[pathParts.length - 1] || `brand-image-${i}`;
       const sanitizedFilename = filename.replace(/[^a-zA-Z0-9.-]/g, '-');
 
-      // Upload to Vercel Blob
+      // Upload processed image to Vercel Blob
+      const processedBlob = new Blob([new Uint8Array(processed.buffer)], { type: contentType });
       const uploadName = `brand-assets/${Date.now()}-${sanitizedFilename}`;
       console.log(`[Download & Rehost] Uploading to Vercel Blob as: ${uploadName}`);
 
-      const { url: blobUrl } = await put(uploadName, blob, {
+      const { url: blobUrl } = await put(uploadName, processedBlob, {
         access: 'public',
         token: blobToken,
       });
 
       console.log(`[Download & Rehost] ✓ Successfully rehosted: ${url} → ${blobUrl}`);
+      console.log(`[Download & Rehost] Final dimensions: ${processed.metadata.width}x${processed.metadata.height}`);
 
       successfulUploads.push({
         originalUrl: url,
         blobUrl: blobUrl,
         name: sanitizedFilename,
+        dimensions: {
+          width: processed.metadata.width,
+          height: processed.metadata.height,
+        },
+        wasResized: processed.metadata.wasResized,
       });
 
     } catch (error) {

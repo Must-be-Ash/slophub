@@ -1,3 +1,5 @@
+import { getImageDimensions } from '../../lib/image-utils';
+
 interface ImageGenerationInput {
   // Campaign and brand context
   campaignDescription: string;
@@ -88,6 +90,30 @@ async function generateWithImageToImage(
   }
   if (input.brandImageUrls) {
     imageUrls.push(...input.brandImageUrls); // Secondary reference
+  }
+
+  // Validate reference images (Fal is more lenient than Claude, but good to check)
+  console.log(`[Fal Image Gen] Validating ${imageUrls.length} reference images...`);
+  for (const imageUrl of imageUrls) {
+    try {
+      const response = await fetch(imageUrl);
+      if (!response.ok) {
+        console.warn(`[Fal Image Gen] ⚠️ Failed to fetch reference image for validation: ${imageUrl}`);
+        continue;
+      }
+
+      const imageBuffer = Buffer.from(await response.arrayBuffer());
+      const dims = await getImageDimensions(imageBuffer);
+      console.log(`[Fal Image Gen] Reference image dimensions: ${dims.width}x${dims.height} (${imageUrl})`);
+
+      // Log warning for very large images (> 2048px)
+      if (dims.width > 2048 || dims.height > 2048) {
+        console.warn(`[Fal Image Gen] ⚠️ Large reference image detected: ${dims.width}x${dims.height}. Fal may resize automatically.`);
+      }
+    } catch (error) {
+      console.warn(`[Fal Image Gen] ⚠️ Failed to validate reference image: ${imageUrl}`, error);
+      // Continue anyway - Fal will handle or fail gracefully
+    }
   }
 
   // Generate 3 prompts for different sections
