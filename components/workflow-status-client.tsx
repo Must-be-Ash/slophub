@@ -141,7 +141,7 @@ export function WorkflowStatusClient({
               Creating Your Landing Page
             </h1>
             <p className="text-slate-500">
-              This usually takes 1-2 minutes
+              This usually takes 3-4 minutes
             </p>
           </div>
 

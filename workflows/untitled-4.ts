@@ -599,54 +599,9 @@ Return a detailed specification with all sections clearly outlined.`,
   // Determine the final URL for this landing page
   const landingPageUrl = `https://slophub.xyz/landing/${runId}`;
 
-  // Step 7: Capture Screenshot
-  await updateStepStatusStep(writable, runId, 'screenshot', 'running');
-  let screenshotUrl: string | undefined;
-  try {
-    const startTime = Date.now();
-
-    console.log('[Workflow] Starting screenshot capture for:', landingPageUrl);
-    console.log('[Workflow] SCREENSHOTAPI_TOKEN present:', !!process.env.SCREENSHOTAPI_TOKEN);
-    console.log('[Workflow] BLOB_READ_WRITE_TOKEN present:', !!process.env.BLOB_READ_WRITE_TOKEN);
-
-    // Wait 3 seconds to ensure the page is available (avoid race condition)
-    console.log('[Workflow] Waiting 3 seconds for page to be fully available...');
-    await sleep('3s');
-
-    // Import and call screenshot step
-    const { screenshotStep } = await import('./steps/screenshot-step');
-    const screenshotResult = await screenshotStep({
-      url: landingPageUrl,
-    });
-
-    screenshotUrl = screenshotResult.screenshotUrl;
-    console.log('[Workflow] ✓ Screenshot captured successfully:', screenshotUrl);
-
-    await updateStepStatusStep(writable, runId, 'screenshot', 'success', {
-      detail: {
-        screenshotUrl: screenshotUrl,
-        pageUrl: landingPageUrl,
-      },
-      duration: Date.now() - startTime,
-    });
-  } catch (error) {
-    console.error('[Workflow] Screenshot capture failed:', error);
-    console.error('[Workflow] Error details:', {
-      message: error instanceof Error ? error.message : String(error),
-      stack: error instanceof Error ? error.stack : undefined,
-    });
-
-    // Don't fail the entire workflow if screenshot fails
-    await updateStepStatusStep(writable, runId, 'screenshot', 'success', {
-      detail: {
-        skipped: true,
-        reason: 'Screenshot failed - will use iframe fallback',
-        error: error instanceof Error ? error.message : String(error),
-      },
-    });
-  }
-
-  // Save to MongoDB for persistence
+  // CRITICAL: Save to MongoDB BEFORE taking screenshot
+  // This ensures the landing page data exists when the screenshot API loads the page
+  console.log('[Workflow] Saving landing page data to MongoDB before screenshot...');
   try {
     await saveToMongoDBStep({
       workflowData: {
@@ -668,13 +623,92 @@ Return a detailed specification with all sections clearly outlined.`,
         referenceImageUrl: input.imageUrl,
         generatedImages,
         liveUrl: landingPageUrl,
-        screenshotUrl,
+        screenshotUrl: undefined, // Will be updated after screenshot
         createdAt: Date.now(),
       },
     });
+    console.log('[Workflow] ✓ Landing page data saved to MongoDB');
   } catch (mongoError) {
     // Don't fail the whole workflow if MongoDB save fails
     console.error('MongoDB save failed:', mongoError);
+  }
+
+  // Step 7: Capture Screenshot (AFTER MongoDB save)
+  await updateStepStatusStep(writable, runId, 'screenshot', 'running');
+  let screenshotUrl: string | undefined;
+  try {
+    const startTime = Date.now();
+
+    console.log('[Workflow] Starting screenshot capture for:', landingPageUrl);
+    console.log('[Workflow] SCREENSHOTAPI_TOKEN present:', !!process.env.SCREENSHOTAPI_TOKEN);
+    console.log('[Workflow] BLOB_READ_WRITE_TOKEN present:', !!process.env.BLOB_READ_WRITE_TOKEN);
+
+    // Wait 3 seconds for Next.js to process the MongoDB data and build the page
+    console.log('[Workflow] Waiting 3 seconds for Next.js to render the landing page...');
+    await sleep('3s');
+
+    // Import and call screenshot step
+    const { screenshotStep } = await import('./steps/screenshot-step');
+    const screenshotResult = await screenshotStep({
+      url: landingPageUrl,
+    });
+
+    screenshotUrl = screenshotResult.screenshotUrl;
+    console.log('[Workflow] ✓ Screenshot captured successfully:', screenshotUrl);
+
+    await updateStepStatusStep(writable, runId, 'screenshot', 'success', {
+      detail: {
+        screenshotUrl: screenshotUrl,
+        pageUrl: landingPageUrl,
+      },
+      duration: Date.now() - startTime,
+    });
+
+    // Update MongoDB with the screenshot URL
+    try {
+      await saveToMongoDBStep({
+        workflowData: {
+          runId,
+          url: input.url,
+          industry: scrapeResult.metadata.industry,
+          brandAssets: {
+            title: scrapeResult.metadata.title,
+            description: scrapeResult.metadata.description,
+            ogImage: ogImageAsset?.blobUrl || scrapeResult.metadata.ogImage,
+            favicon: faviconAsset?.blobUrl || scrapeResult.metadata.favicon,
+            uploadedAssets,
+            brandScreenshotUrl: brandScreenshotUrl,
+          },
+          branding: scrapeResult.branding,
+          campaignDescription: input.campaignDescription,
+          landingPageSpec: specResult.text,
+          landingPageHtml,
+          referenceImageUrl: input.imageUrl,
+          generatedImages,
+          liveUrl: landingPageUrl,
+          screenshotUrl, // Now we have the screenshot URL
+          createdAt: Date.now(),
+        },
+      });
+      console.log('[Workflow] ✓ Screenshot URL updated in MongoDB');
+    } catch (updateError) {
+      console.error('[Workflow] Failed to update screenshot URL in MongoDB:', updateError);
+    }
+  } catch (error) {
+    console.error('[Workflow] Screenshot capture failed:', error);
+    console.error('[Workflow] Error details:', {
+      message: error instanceof Error ? error.message : String(error),
+      stack: error instanceof Error ? error.stack : undefined,
+    });
+
+    // Don't fail the entire workflow if screenshot fails
+    await updateStepStatusStep(writable, runId, 'screenshot', 'success', {
+      detail: {
+        skipped: true,
+        reason: 'Screenshot failed - will use iframe fallback',
+        error: error instanceof Error ? error.message : String(error),
+      },
+    });
   }
 
   // Close the writable stream

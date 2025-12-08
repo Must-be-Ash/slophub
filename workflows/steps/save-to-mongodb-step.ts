@@ -41,12 +41,19 @@ export async function saveToMongoDBStep({
     const database = client.db('blog-agent');
     const collection = database.collection('workflows');
 
-    // Insert the workflow data
-    const result = await collection.insertOne(workflowData);
+    // Upsert the workflow data (insert if new, update if exists)
+    // This allows us to update the screenshotUrl after initial save
+    const result = await collection.updateOne(
+      { runId: workflowData.runId },
+      { $set: workflowData },
+      { upsert: true }
+    );
 
     return {
-      insertedId: result.insertedId.toString(),
       success: true,
+      upsertedId: result.upsertedId?.toString(),
+      modifiedCount: result.modifiedCount,
+      matchedCount: result.matchedCount,
     };
   } catch (error) {
     console.error('MongoDB save error:', error);
