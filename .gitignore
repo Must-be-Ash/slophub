@@ -44,3 +44,8 @@ coverage/
 *.pem
 Thumbs.db
 
+# Log files and debugging
+log.md
+logs_result.json
+*.log.md
+*_logs.json

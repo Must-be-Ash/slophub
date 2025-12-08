@@ -2,13 +2,16 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
-import { Grid3x3 } from 'lucide-react';
+import { usePathname } from 'next/navigation';
+import { Grid3x3, Plus } from 'lucide-react';
 import { useIsSignedIn } from '@coinbase/cdp-hooks';
 import { AuthButton } from '@coinbase/cdp-react/components/AuthButton';
 import { WalletDropdown } from './WalletDropdown';
 
 export function Header() {
   const { isSignedIn } = useIsSignedIn();
+  const pathname = usePathname();
+  const isGalleryPage = pathname === '/gallery';
 
   return (
     <header className="relative py-4 px-6 border-b border-slate-200 bg-white">
@@ -23,7 +26,7 @@ export function Header() {
             className="object-contain"
           />
           <span 
-            className="text-lg font-semibold text-slate-900 group-hover:text-slate-600 transition-colors" 
+            className="hidden md:inline text-lg font-semibold text-slate-900 group-hover:text-slate-600 transition-colors" 
             style={{ fontFamily: 'var(--font-caprasimo)' }}
           >
             Slophub
@@ -32,13 +35,23 @@ export function Header() {
 
         {/* Navigation */}
         <nav className="flex items-center gap-3">
-          <Link
-            href="/gallery"
-            className="inline-flex items-center gap-2 px-4 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-white rounded-xl transition-all"
-          >
-            <Grid3x3 className="h-4 w-4" />
-            Gallery
-          </Link>
+          {isGalleryPage ? (
+            <Link
+              href="/"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm text-white bg-black hover:bg-slate-800 rounded-xl transition-all font-medium"
+            >
+              <Plus className="h-4 w-4" />
+              create
+            </Link>
+          ) : (
+            <Link
+              href="/gallery"
+              className="inline-flex items-center gap-2 px-4 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-white rounded-xl transition-all"
+            >
+              <Grid3x3 className="h-4 w-4" />
+              Gallery
+            </Link>
+          )}
 
           {/* Auth / Wallet */}
           {isSignedIn ? (
