@@ -1,0 +1,298 @@
+#!/usr/bin/env node
+/**
+ * Test script to make a paid x402 call to Slophub landing page generation endpoint
+ * This will make a real payment of $1.99 USDC on Base network
+ */
+
+import { wrapFetchWithPayment, decodeXPaymentResponse } from 'x402-fetch';
+import { privateKeyToAccount } from 'viem/accounts';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config({ path: '.env.local' });
+
+// Test data
+const TEST_DATA = {
+  url: 'https://www.onepeloton.com/en-CA',
+  campaignDescription: `Black Friday sales, ending soon. Save up to $2,310 on the New Cross Training Series. Peloton, bringing the power of studio-level fitness right into your home across Canada. We offer connected hardware like bikes, treadmills, rowers — along with on-demand and live classes spanning cardio, strength, yoga, meditation, and more — so you can workout wherever you are. With our subscription, you get access to world-class instructors, thousands of classes, and a full range of workouts designed for all fitness levels. Whether you're cycling, running, rowing or stretching, Peloton gives you the flexibility to build a fitness routine that fits your life.`,
+  imageUrl: 'https://res.cloudinary.com/peloton-cycle/image/fetch/dpr_2.0,f_auto,q_auto:good,w_600/https://images.ctfassets.net/7vk8puwnesgc/1t2RDtMWApLXAOVLe2jPw0/c5c812deeaa648ef16a957c9e854d0ee/Bike_Render1.png'
+};
+
+async function testRaw402() {
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('STEP 1: Testing raw HTTP call (should return 402)');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+  try {
+    const endpoint = process.env.NEXT_PUBLIC_URL
+      ? `${process.env.NEXT_PUBLIC_URL}/api/workflows/untitled-4`
+      : 'http://localhost:3000/api/workflows/untitled-4';
+
+    console.log('📡 Making raw HTTP POST request (without payment)...');
+    console.log('   URL:', endpoint);
+    console.log('   Data:', {
+      url: TEST_DATA.url.substring(0, 50) + '...',
+      campaignDescription: TEST_DATA.campaignDescription.substring(0, 50) + '...',
+    });
+    console.log('');
+
+    const response = await fetch(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(TEST_DATA),
+    });
+
+    console.log('📊 Response Status:', response.status, response.statusText);
+    console.log('📋 Response Headers:');
+    response.headers.forEach((value, key) => {
+      console.log(`   ${key}: ${value}`);
+    });
+
+    const responseText = await response.text();
+    console.log('\n📄 Response Body:');
+    try {
+      const json = JSON.parse(responseText);
+      console.log(JSON.stringify(json, null, 2));
+
+      if (response.status === 402 && json.accepts) {
+        console.log('\n💰 Payment Requirements:');
+        const requirement = json.accepts[0];
+        console.log('   Network:', requirement.network);
+        console.log('   Amount:', (parseInt(requirement.maxAmountRequired) / 1000000).toFixed(2), 'USDC');
+        console.log('   Pay To:', requirement.payTo);
+        console.log('   Resource:', requirement.resource);
+      }
+    } catch {
+      console.log(responseText);
+    }
+
+    if (response.status === 402) {
+      console.log('\n✅ SUCCESS! Received 402 Payment Required response as expected!');
+    } else {
+      console.log(`\n⚠️  Received status ${response.status} instead of 402`);
+    }
+
+  } catch (error) {
+    console.error('❌ Error making raw request:', error.message);
+  }
+}
+
+async function testX402Call() {
+  console.log('\n\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('STEP 2: Making paid x402 call ($1.99 USDC)');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+  // Check for private key
+  const privateKey = process.env.X402_WALLET_PRIVATE_KEY;
+  if (!privateKey) {
+    console.log('❌ X402_WALLET_PRIVATE_KEY not set in .env.local');
+    console.log('\nPlease add your private key to .env.local:');
+    console.log('   X402_WALLET_PRIVATE_KEY=0x...');
+    return;
+  }
+
+  try {
+    const endpoint = process.env.NEXT_PUBLIC_URL
+      ? `${process.env.NEXT_PUBLIC_URL}/api/workflows/untitled-4`
+      : 'http://localhost:3000/api/workflows/untitled-4';
+
+    console.log('📝 Endpoint:', endpoint);
+    console.log('📝 Method: POST');
+    console.log('📝 Test Data:');
+    console.log('   URL:', TEST_DATA.url);
+    console.log('   Campaign:', TEST_DATA.campaignDescription.substring(0, 100) + '...');
+    console.log('   Image:', TEST_DATA.imageUrl.substring(0, 80) + '...');
+    console.log('');
+
+    // Initialize wallet
+    console.log('🔐 Initializing wallet...');
+    const account = privateKeyToAccount(privateKey);
+    console.log('✅ Wallet address:', account.address);
+
+    // Wrap fetch with payment handler
+    console.log('💳 Initializing x402-fetch payment wrapper...');
+    const fetchWithPayment = wrapFetchWithPayment(fetch, account, {
+      maxPaymentAmount: 2.5, // Allow up to $2.50 USDC (our endpoint costs $1.99)
+    });
+    console.log('✅ Payment handler ready (max: $2.50 USDC)\n');
+
+    // Make the paid call
+    console.log('📡 Making x402-protected request...');
+    console.log('   (x402-fetch will automatically handle payment)\n');
+
+    const startTime = Date.now();
+
+    const response = await fetchWithPayment(endpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(TEST_DATA),
+    });
+
+    const duration = ((Date.now() - startTime) / 1000).toFixed(1);
+
+    console.log(`✅ Request completed in ${duration}s\n`);
+
+    // Parse response
+    const result = await response.json();
+
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('✨ LANDING PAGE GENERATED!');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+    console.log('📋 Workflow Details:');
+    console.log('   Run ID:', result.runId);
+    console.log('   Live URL:', result.liveUrl);
+    console.log('');
+
+    // Get payment details
+    const paymentHeader = response.headers.get('x-payment-response');
+    if (paymentHeader) {
+      try {
+        const paymentResponse = decodeXPaymentResponse(paymentHeader);
+        console.log('💸 Payment Transaction:');
+        console.log('   TX Hash:', paymentResponse.transaction);
+        console.log('   BaseScan:', `https://basescan.org/tx/${paymentResponse.transaction}`);
+        console.log('');
+      } catch (e) {
+        console.log('⚠️  Could not decode payment response');
+      }
+    }
+
+    console.log('⏳ Workflow Status:');
+    console.log('   The landing page is being generated (~3-4 minutes)');
+    console.log('   Monitor progress:', `${endpoint.replace('/api/workflows/untitled-4', '')}/workflow/${result.runId}`);
+    console.log('   Status API:', `${endpoint}/status?runId=${result.runId}`);
+    console.log('');
+
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    console.log('Next Steps:');
+    console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+    console.log('1. Monitor workflow progress:');
+    console.log(`   curl "${endpoint}/status?runId=${result.runId}"`);
+    console.log('');
+    console.log('2. View landing page (once complete):');
+    console.log(`   open ${result.liveUrl}`);
+    console.log('');
+
+    return result;
+
+  } catch (error) {
+    console.error('\n❌ Error:', error.message);
+
+    if (error.response) {
+      console.error('\nResponse Status:', error.response.status);
+      console.error('Response Data:', error.response.data);
+    }
+
+    if (error.stack) {
+      console.error('\nStack trace:');
+      console.error(error.stack);
+    }
+
+    throw error;
+  }
+}
+
+async function monitorWorkflow(runId) {
+  console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('STEP 3: Monitoring Workflow Progress');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+
+  const endpoint = process.env.NEXT_PUBLIC_URL
+    ? `${process.env.NEXT_PUBLIC_URL}/api/workflows/untitled-4`
+    : 'http://localhost:3000/api/workflows/untitled-4';
+
+  const statusUrl = `${endpoint}/status?runId=${runId}`;
+
+  let attempts = 0;
+  const maxAttempts = 120; // 4 minutes at 2s intervals
+
+  while (attempts < maxAttempts) {
+    try {
+      const response = await fetch(statusUrl);
+      const status = await response.json();
+
+      // Clear console line and show current status
+      process.stdout.write('\r' + ' '.repeat(100) + '\r');
+
+      const currentStep = status.steps.find(s => s.status === 'running');
+      if (currentStep) {
+        process.stdout.write(`⚙️  ${currentStep.stepLabel}...`);
+      } else if (status.status === 'running') {
+        process.stdout.write('⚙️  Processing...');
+      }
+
+      // Check if completed
+      if (status.status === 'completed') {
+        console.log('\n\n✅ Workflow completed successfully!\n');
+        console.log('📊 Final Results:');
+        console.log('   Live URL:', status.result.liveUrl);
+        console.log('   Screenshot:', status.result.screenshotUrl || 'Processing...');
+        console.log('');
+
+        console.log('🎉 Your landing page is ready!');
+        console.log(`   Open: ${status.result.liveUrl}`);
+        console.log('');
+
+        return status;
+      }
+
+      if (status.status === 'failed' || status.status === 'error') {
+        console.log('\n\n❌ Workflow failed\n');
+        console.log('Error details:', JSON.stringify(status, null, 2));
+        throw new Error('Workflow failed');
+      }
+
+      // Wait 2 seconds before next check
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      attempts++;
+
+    } catch (error) {
+      if (error.message === 'Workflow failed') throw error;
+      console.error('\nError checking status:', error.message);
+      await new Promise(resolve => setTimeout(resolve, 5000));
+    }
+  }
+
+  console.log('\n\n⏱️  Timeout: Workflow taking longer than expected');
+  console.log('   Check status manually:', statusUrl);
+}
+
+async function main() {
+  console.log('\n🚀 Slophub x402 Endpoint Test\n');
+  console.log('This will make a REAL payment of $1.99 USDC on Base network\n');
+
+  // Step 1: Test raw 402 response
+  await testRaw402();
+
+  // Step 2: Make paid call
+  const result = await testX402Call();
+
+  if (!result) {
+    console.log('\n⚠️  Skipping workflow monitoring (no runId)\n');
+    return;
+  }
+
+  // Step 3: Monitor progress (optional)
+  console.log('\n❓ Monitor workflow progress? (This will poll for ~4 minutes)');
+  console.log('   Press Ctrl+C to skip and monitor manually\n');
+
+  // Wait 5 seconds for user to cancel if they want
+  await new Promise(resolve => setTimeout(resolve, 5000));
+
+  await monitorWorkflow(result.runId);
+
+  console.log('\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+  console.log('Test completed successfully!');
+  console.log('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n');
+}
+
+// Run the test
+main().catch(error => {
+  console.error('\n❌ Test failed:', error.message);
+  process.exit(1);
+});

@@ -418,7 +418,7 @@
        receivingAddress: process.env.NEXT_PUBLIC_RECEIVING_WALLET_ADDRESS as `0x${string}`,
        usdcContract: process.env.USDC_CONTRACT_ADDRESS || '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
        facilitatorUrl: process.env.FACILITATOR_URL || 'https://api.cdp.coinbase.com/platform',
-       maxPaymentAmount: 0.1, // Max USDC user can authorize
+       maxPaymentAmount: 2.5, // Max USDC user can authorize
      };
 
      // Validate required config on startup

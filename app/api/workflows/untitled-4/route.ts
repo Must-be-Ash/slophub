@@ -21,7 +21,7 @@ export async function POST(request: Request) {
     const requestUrl = `${new URL(request.url).origin}${new URL(request.url).pathname}` as Resource;
 
     const paymentRequirements = createPaymentRequirements(
-      '$0.01',        // Price in USDC
+      '$1.99',        // Price in USDC
       'base',         // Base mainnet
       requestUrl,     // Resource URL
       'Generate AI landing page with workflow execution'

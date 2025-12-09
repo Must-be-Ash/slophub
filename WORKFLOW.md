@@ -38,7 +38,7 @@ Blog Agent is an AI-powered landing page generator that creates conversion-focus
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │            Payment Verification (x402 Protocol)                  │
-│       POST /api/workflows/untitled-4 ($0.01 USDC on Base)      │
+│       POST /api/workflows/untitled-4 ($1.99 USDC on Base)      │
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │ 1. Verify X-PAYMENT header with CDP Facilitator        │   │
 │  │ 2. Check payment authorization signature               │   │
@@ -517,7 +517,7 @@ After successful screenshot, the same workflow document is updated with the scre
 ## Payment System (x402 Protocol)
 
 ### Overview
-The workflow endpoint is protected by the x402 payment protocol, requiring $0.01 USDC on Base network.
+The workflow endpoint is protected by the x402 payment protocol, requiring $1.99 USDC on Base network.
 
 ### Payment Flow
 
@@ -554,7 +554,7 @@ The workflow endpoint is protected by the x402 payment protocol, requiring $0.01
 {
   scheme: 'exact',
   network: 'base',
-  maxAmountRequired: '10000', // $0.01 in USDC wei
+  maxAmountRequired: '1990000', // $1.99 in USDC wei
   resource: 'https://slophub.xyz/api/workflows/untitled-4',
   description: 'Generate AI landing page with workflow execution',
   payTo: process.env.NEXT_PUBLIC_RECEIVING_WALLET_ADDRESS,
@@ -581,7 +581,7 @@ The workflow endpoint is protected by the x402 payment protocol, requiring $0.01
 
 **Endpoint:** `POST /api/workflows/untitled-4`
 
-**Payment:** $0.01 USDC on Base (x402 protocol)
+**Payment:** $1.99 USDC on Base (x402 protocol)
 
 **Request Headers:**
 ```
@@ -719,7 +719,7 @@ X-PAYMENT: <base64-encoded-payment-proof>
     {
       "scheme": "exact",
       "network": "base",
-      "maxAmountRequired": "10000",
+      "maxAmountRequired": "1990000",
       "resource": "https://slophub.xyz/api/workflows/untitled-4",
       "description": "Generate AI landing page with workflow execution",
       "payTo": "0xAbF01df9428EaD5418473A7c91244826A3Af23b3",
@@ -740,7 +740,7 @@ X-PAYMENT: <base64-encoded-payment-proof>
 
 **Description:** Initiates landing page generation workflow
 
-**Payment:** $0.01 USDC on Base
+**Payment:** $1.99 USDC on Base
 
 **Headers:**
 ```
@@ -1019,7 +1019,7 @@ NEXT_PUBLIC_URL=https://slophub.xyz
 
 ### Payment Protection
 - x402 protocol integration
-- $0.01 USDC payment required
+- $1.99 USDC payment required
 - CDP Facilitator verification
 - Async settlement (doesn't block workflow)
 

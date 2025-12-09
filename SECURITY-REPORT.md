@@ -9,7 +9,7 @@
 ## 🔒 Security Layers (In Order)
 
 ### 1. **x402 Payment Verification** (STRONGEST PROTECTION)
-- **Requires:** $0.01 USDC payment on Base network before ANY processing
+- **Requires:** $1.99 USDC payment on Base network before ANY processing
 - **HTTP Status:** Returns `402 Payment Required` without valid payment
 - **Payment Header:** Must include valid `X-PAYMENT` header with cryptographic signature
 - **Result:** ✅ **Cannot be bypassed** - All requests without valid payment are rejected
@@ -80,14 +80,14 @@ curl -X POST http://localhost:3000/api/workflows/untitled-4 \
 
 **Your API cannot be abused because:**
 
-1. ✅ **Every request costs $0.01 USDC** - Attackers would lose money trying to spam
+1. ✅ **Every request costs $1.99 USDC** - Attackers would lose money trying to spam
 2. ✅ **Payment verification happens FIRST** - Before any expensive operations (Firecrawl, Perplexity, Claude, Fal)
 3. ✅ **Cryptographic verification** - Payment signatures are validated on-chain
 4. ✅ **Rate limiting** - Even if someone pays, max 10 requests/hour per IP
 
 **Worst case scenario:**
 If someone wanted to abuse your API, they would have to:
-- Pay $0.01 USDC per request
+- Pay $1.99 USDC per request
 - Wait for on-chain payment settlement
 - Be limited to 10 requests per hour
 - Actually cover YOUR costs (since they're paying you!)

@@ -30,7 +30,7 @@ The agent orchestrates multiple AI services to create your landing page:
 
 - **[Vercel Workflow Kit](https://workflow.is)** - Durable, retryable workflow orchestration
 - **[CDP Embedded Wallets](https://docs.cdp.coinbase.com/embedded-wallets)** - Seamless wallet authentication and onramp
-- **[x402 Protocol](https://x402.org)** - Micropayment gating ($0.01 USDC on Base network)
+- **[x402 Protocol](https://x402.org)** - Micropayment gating ($1.99 USDC on Base network)
 - **Next.js 16** - React framework with App Router
 - **MongoDB** - Data persistence and workflow state management
 - **Vercel Blob** - Asset storage for images and screenshots
@@ -148,7 +148,7 @@ pnpm update-thumbnails
                          ▼
 ┌─────────────────────────────────────────────────────────────────┐
 │            Payment Verification (x402 Protocol)                  │
-│       POST /api/workflows/untitled-4 ($0.01 USDC on Base)      │
+│       POST /api/workflows/untitled-4 ($1.99 USDC on Base)      │
 │  ┌─────────────────────────────────────────────────────────┐   │
 │  │ 1. Verify X-PAYMENT header with CDP Facilitator        │   │
 │  │ 2. Check payment authorization signature               │   │
@@ -280,7 +280,7 @@ pnpm update-thumbnails
 - Resume from last successful step
 
 ### 💳 Micropayments (x402)
-- $0.01 USDC payment on Base network
+- $1.99 USDC payment on Base network
 - CDP Facilitator verification
 - Embedded wallet integration
 - Async settlement (doesn't block workflow)
@@ -310,7 +310,7 @@ pnpm update-thumbnails
 ### POST `/api/workflows/untitled-4`
 **Description:** Start landing page generation workflow
 
-**Payment:** $0.01 USDC on Base (via x402)
+**Payment:** $1.99 USDC on Base (via x402)
 
 **Headers:**
 ```
