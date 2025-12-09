@@ -1,0 +1,36 @@
+{
+  "timestamp": "2025-12-09T00:31:04.065Z",
+  "request": {
+    "endpoint": "http://localhost:3000/api/workflows/untitled-4",
+    "method": "POST",
+    "data": {
+      "url": "https://www.onepeloton.com/en-CA",
+      "campaignDescription": "Black Friday sales, ending soon. Save up to $2,310 on the New Cross Training Series. Peloton, bringing the power of studio-level fitness right into your home across Canada. We offer connected hardware like bikes, treadmills, rowers — along with on-demand and live classes spanning cardio, strength, yoga, meditation, and more — so you can workout wherever you are. With our subscription, you get access to world-class instructors, thousands of classes, and a full range of workouts designed for all fitness levels. Whether you're cycling, running, rowing or stretching, Peloton gives you the flexibility to build a fitness routine that fits your life.",
+      "imageUrl": "https://res.cloudinary.com/peloton-cycle/image/fetch/dpr_2.0,f_auto,q_auto:good,w_600/https://images.ctfassets.net/7vk8puwnesgc/1t2RDtMWApLXAOVLe2jPw0/c5c812deeaa648ef16a957c9e854d0ee/Bike_Render1.png"
+    }
+  },
+  "response": {
+    "status": 200,
+    "statusText": "OK",
+    "headers": {
+      "access-control-expose-headers": "X-PAYMENT-RESPONSE, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset",
+      "connection": "keep-alive",
+      "content-type": "application/json",
+      "date": "Tue, 09 Dec 2025 00:31:04 GMT",
+      "keep-alive": "timeout=5",
+      "transfer-encoding": "chunked",
+      "vary": "rsc, next-router-state-tree, next-router-prefetch, next-router-segment-prefetch",
+      "x-payment-response": "tx_hash:pending",
+      "x-ratelimit-limit": "10",
+      "x-ratelimit-remaining": "9",
+      "x-ratelimit-reset": "1765243864049"
+    },
+    "body": {
+      "success": true,
+      "runId": "wrun_01KC089NBKYH3SJXD92GANQ1B9",
+      "liveUrl": "http://localhost:3000/landing/wrun_01KC089NBKYH3SJXD92GANQ1B9",
+      "message": "Landing page generation started"
+    }
+  },
+  "payment": null
+}

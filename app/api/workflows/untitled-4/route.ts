@@ -152,10 +152,14 @@ export async function POST(request: Request) {
     });
 
     // 7. RETURN SUCCESS WITH RATE LIMIT AND PAYMENT HEADERS
+    const origin = new URL(request.url).origin;
+    const liveUrl = `${origin}/landing/${run.runId}`;
+
     return NextResponse.json(
       {
         success: true,
         runId: run.runId,
+        liveUrl: liveUrl,
         message: 'Landing page generation started',
       },
       {
