@@ -38,7 +38,11 @@ export function Header() {
           {isGalleryPage ? (
             <Link
               href="/"
-              className="inline-flex items-center gap-2 px-4 py-2 text-sm text-white bg-black hover:bg-slate-800 rounded-xl transition-all font-medium"
+              className={`inline-flex items-center justify-center gap-2 px-4 text-sm transition-all font-medium ${
+                isSignedIn
+                  ? 'py-2 text-white bg-black hover:bg-slate-800 rounded-xl'
+                  : 'py-3 text-slate-900 bg-transparent border border-slate-300 hover:border-slate-400 hover:bg-slate-50 rounded-full'
+              }`}
             >
               <Plus className="h-4 w-4" />
               create
