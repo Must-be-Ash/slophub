@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
-import { ExternalLink, Calendar, Globe } from 'lucide-react';
+import { ExternalLink, Calendar } from 'lucide-react';
 import { Header } from '@/components/Header';
 
 interface Workflow {
@@ -204,11 +204,6 @@ export default function GalleryPage() {
                         <Calendar className="h-3.5 w-3.5" />
                         <span>{formatDate(workflow.createdAt)}</span>
                       </div>
-                      {workflow.industry && (
-                        <div className="px-2 py-0.5 bg-slate-100 rounded text-slate-600">
-                          {workflow.industry}
-                        </div>
-                      )}
                     </div>
                   </div>
                 </Link>
