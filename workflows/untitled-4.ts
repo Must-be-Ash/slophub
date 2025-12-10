@@ -395,6 +395,7 @@ CRITICAL REQUIREMENTS:
 - Single-purpose conversion focus
 - Brand-consistent messaging tone
 - Data-driven content using research insights
+- Mobile-first design: Content and layout should work well on mobile devices (concise headlines, scannable text, vertical layouts)
 
 Return a detailed specification with all sections clearly outlined.`,
     });

@@ -144,15 +144,15 @@ TECHNICAL REQUIREMENTS:
 1. Create a complete HTML document starting with <!DOCTYPE html>
 2. Include all CSS inline in a <style> tag in the <head>
 3. Use modern, clean design with excellent typography
-4. Make it fully responsive (mobile-first)
-5. Use the provided images strategically throughout the page
-6. All buttons and CTAs must link to: ${targetUrl}
-7. Include proper meta tags for SEO (title, description, og:tags)
-8. Use the brand's favicon if available
-9. NO external dependencies - everything must be inline
-10. NO JavaScript - pure HTML and CSS only
-11. Use a conversion-focused layout with clear visual hierarchy
-12. Include compelling copy based on the spec
+4. Make it fully responsive (mobile-first). Prevent horizontal overflow: use overflow-x: hidden on body and word-wrap CSS for code/URLs
+6. Use the provided images strategically throughout the page
+7. All buttons and CTAs must link to: ${targetUrl}
+8. Include proper meta tags for SEO (title, description, og:tags)
+9. Use the brand's favicon if available
+10. NO external dependencies - everything must be inline
+11. NO JavaScript - pure HTML and CSS only
+12. Use a conversion-focused layout with clear visual hierarchy
+13. Include compelling copy based on the spec
 
 DESIGN STYLE GUIDELINES:
 - Modern, clean, and professional (matching the brand)
