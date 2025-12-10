@@ -1,6 +1,6 @@
 'use client';
 
-import { useEvmAddress, useIsSignedIn, useSignOut } from '@coinbase/cdp-hooks';
+import { useCurrentUser, useIsSignedIn, useSignOut } from '@coinbase/cdp-hooks';
 import { RefreshCw, Wallet, Copy, Check, ChevronDown, LogOut } from 'lucide-react';
 import { useEffect, useState, useRef } from 'react';
 import type { MouseEvent as ReactMouseEvent } from 'react';
@@ -12,8 +12,11 @@ const USDC_DECIMALS = 6;
 
 export function WalletDropdown() {
   const { isSignedIn } = useIsSignedIn();
-  const { evmAddress } = useEvmAddress();
+  const { currentUser } = useCurrentUser();
   const { signOut } = useSignOut();
+
+  // Get EOA (Externally Owned Account) - this is the address that makes payments
+  const evmAddress = currentUser?.evmAccounts?.[0];
   const [balance, setBalance] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [copied, setCopied] = useState(false);
