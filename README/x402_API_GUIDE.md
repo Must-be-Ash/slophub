@@ -55,20 +55,20 @@ Learn more: [x402 Documentation](https://docs.cdp.coinbase.com/x402)
 ### 1. Install Dependencies
 
 <details>
-<summary>Node.js (x402-fetch)</summary>
+<summary>Node.js (@x402/fetch)</summary>
 
 ```bash
-npm install x402-fetch viem dotenv
+npm install @x402/fetch @x402/evm viem dotenv
 ```
 
 **Recommended for:** Simple scripts, serverless functions, or if you prefer native `fetch` API.
 </details>
 
 <details>
-<summary>Node.js (x402-axios)</summary>
+<summary>Node.js (@x402/axios)</summary>
 
 ```bash
-npm install x402-axios axios viem dotenv
+npm install @x402/axios @x402/evm axios viem dotenv
 ```
 
 **Recommended for:** Applications already using Axios, need interceptors, or want more control.
@@ -78,7 +78,7 @@ npm install x402-axios axios viem dotenv
 <summary>Python</summary>
 
 ```bash
-pip install x402 eth-account python-dotenv
+pip install "x402[httpx,evm]" eth-account python-dotenv
 ```
 
 **Recommended for:** Python-based automation, data pipelines, or AI agents.
@@ -133,10 +133,11 @@ const account = privateKeyToAccount(process.env.PRIVATE_KEY as `0x${string}`);
 ### 3. Make Your First Request
 
 <details open>
-<summary><strong>Node.js (x402-fetch)</strong></summary>
+<summary><strong>Node.js (@x402/fetch)</strong></summary>
 
 ```typescript
-import { wrapFetchWithPayment, decodeXPaymentResponse } from "x402-fetch";
+import { wrapFetchWithPayment, x402Client } from "@x402/fetch";
+import { ExactEvmScheme } from "@x402/evm/exact/client";
 import { privateKeyToAccount } from "viem/accounts";
 import dotenv from "dotenv";
 
@@ -145,8 +146,9 @@ dotenv.config();
 // Create wallet account
 const account = privateKeyToAccount(process.env.PRIVATE_KEY as `0x${string}`);
 
-// Wrap fetch with payment handling
-const fetchWithPayment = wrapFetchWithPayment(fetch, account);
+// Wrap fetch with payment handling (x402 v2, Base mainnet)
+const client = new x402Client().register("eip155:8453", new ExactEvmScheme(account));
+const fetchWithPayment = wrapFetchWithPayment(fetch, client);
 
 // Generate landing page
 async function generateLandingPage() {
@@ -170,12 +172,7 @@ async function generateLandingPage() {
     console.log("✅ Landing Page Generated!");
     console.log("Run ID:", result.runId);
     console.log("Live URL:", result.liveUrl);
-
-    // Get payment details
-    const paymentResponse = decodeXPaymentResponse(
-      response.headers.get("x-payment-response")!
-    );
-    console.log("Payment TX:", paymentResponse.transaction);
+    // Payment settles on-chain asynchronously after the workflow starts
 
     return result;
   } catch (error) {
@@ -189,10 +186,11 @@ generateLandingPage();
 </details>
 
 <details>
-<summary><strong>Node.js (x402-axios)</strong></summary>
+<summary><strong>Node.js (@x402/axios)</strong></summary>
 
 ```typescript
-import { withPaymentInterceptor, decodeXPaymentResponse } from "x402-axios";
+import { wrapAxiosWithPayment, x402Client } from "@x402/axios";
+import { ExactEvmScheme } from "@x402/evm/exact/client";
 import axios from "axios";
 import { privateKeyToAccount } from "viem/accounts";
 import dotenv from "dotenv";
@@ -202,12 +200,13 @@ dotenv.config();
 // Create wallet account
 const account = privateKeyToAccount(process.env.PRIVATE_KEY as `0x${string}`);
 
-// Create Axios instance with payment interceptor
-const api = withPaymentInterceptor(
+// Create Axios instance with payment interceptor (x402 v2, Base mainnet)
+const client = new x402Client().register("eip155:8453", new ExactEvmScheme(account));
+const api = wrapAxiosWithPayment(
   axios.create({
     baseURL: "https://slophub.xyz",
   }),
-  account
+  client
 );
 
 // Generate landing page
@@ -222,12 +221,7 @@ async function generateLandingPage() {
     console.log("✅ Landing Page Generated!");
     console.log("Run ID:", response.data.runId);
     console.log("Live URL:", response.data.liveUrl);
-
-    // Get payment details
-    const paymentResponse = decodeXPaymentResponse(
-      response.headers["x-payment-response"]
-    );
-    console.log("Payment TX:", paymentResponse.transaction);
+    // Payment settles on-chain asynchronously after the workflow starts
 
     return response.data;
   } catch (error) {
@@ -245,19 +239,24 @@ generateLandingPage();
 
 ```python
 import asyncio
-from x402.clients.httpx import x402HttpxClient
+from x402 import x402Client
+from x402.http.clients import x402HttpxClient
+from x402.mechanisms.evm import EthAccountSigner
+from x402.mechanisms.evm.exact.register import register_exact_evm_client
 from eth_account import Account
 from dotenv import load_dotenv
 import os
 
 load_dotenv()
 
-# Create wallet account
+# Create wallet account + x402 v2 client
 account = Account.from_key(os.getenv("PRIVATE_KEY"))
+x402 = x402Client()
+register_exact_evm_client(x402, EthAccountSigner(account))
 
 async def generate_landing_page():
     async with x402HttpxClient(
-        account=account,
+        x402,
         base_url="https://slophub.xyz"
     ) as client:
         try:
@@ -306,28 +305,33 @@ curl -X POST https://slophub.xyz/api/workflows/untitled-4 \
 **Response (402):**
 ```json
 {
-  "x402Version": 1,
-  "error": "X-PAYMENT header is required",
+  "x402Version": 2,
+  "error": "PAYMENT-SIGNATURE header is required",
+  "resource": {
+    "url": "https://slophub.xyz/api/workflows/untitled-4",
+    "description": "Generate AI landing page with workflow execution",
+    "mimeType": "application/json"
+  },
   "accepts": [
     {
       "scheme": "exact",
-      "network": "base",
-      "maxAmountRequired": "1990000",
-      "resource": "https://slophub.xyz/api/workflows/untitled-4",
-      "description": "Generate AI landing page with workflow execution",
-      "mimeType": "application/json",
-      "payTo": "0xAbF01df9428EaD5418473A7c91244826A3Af23b3",
+      "network": "eip155:8453",
+      "amount": "1990000",
       "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-      "maxTimeoutSeconds": 120
+      "payTo": "0xAbF01df9428EaD5418473A7c91244826A3Af23b3",
+      "maxTimeoutSeconds": 120,
+      "extra": { "name": "USD Coin", "version": "2" }
     }
   ]
 }
 ```
 
+The same object is also sent base64-encoded in the `PAYMENT-REQUIRED` response header.
+
 **Payment Requirements Explained:**
 - **scheme:** `exact` - Exact payment amount required
-- **network:** `base` - Base mainnet (EVM)
-- **maxAmountRequired:** `1990000` - 1.99 USDC (6 decimals)
+- **network:** `eip155:8453` - Base mainnet (CAIP-2)
+- **amount:** `1990000` - 1.99 USDC (6 decimals)
 - **payTo:** Receiving wallet address
 - **asset:** USDC contract address on Base
 - **maxTimeoutSeconds:** Payment authorization timeout
@@ -338,7 +342,7 @@ curl -X POST https://slophub.xyz/api/workflows/untitled-4 \
 1. ✅ Parses the 402 response
 2. ✅ Verifies amount is within your max ($1.99 ≤ max)
 3. ✅ Creates EIP-712 signature for USDC authorization
-4. ✅ Encodes signature into `X-PAYMENT` header
+4. ✅ Encodes signature into `PAYMENT-SIGNATURE` header
 5. ✅ Retries request with payment header
 
 **You don't need to handle this manually!** The client does it all.
@@ -353,10 +357,7 @@ curl -X POST https://slophub.xyz/api/workflows/untitled-4 \
 }
 ```
 
-**Headers:**
-```
-X-PAYMENT-RESPONSE: tx_hash:0xabc123...
-```
+The payment is settled on-chain asynchronously right after verification, so the transaction appears on BaseScan shortly after the response.
 
 ---
 
@@ -371,7 +372,7 @@ X-PAYMENT-RESPONSE: tx_hash:0xabc123...
 **Headers:**
 ```
 Content-Type: application/json
-X-PAYMENT: <base64-encoded-payment-authorization> (added automatically by x402 client)
+PAYMENT-SIGNATURE: <base64-encoded-payment-authorization> (added automatically by x402 client)
 ```
 
 **Body:**
@@ -562,14 +563,16 @@ async function downloadHTML(runId: string) {
 ## Complete Example: End-to-End
 
 ```typescript
-import { wrapFetchWithPayment, decodeXPaymentResponse } from "x402-fetch";
+import { wrapFetchWithPayment, x402Client } from "@x402/fetch";
+import { ExactEvmScheme } from "@x402/evm/exact/client";
 import { privateKeyToAccount } from "viem/accounts";
 import dotenv from "dotenv";
 
 dotenv.config();
 
 const account = privateKeyToAccount(process.env.PRIVATE_KEY as `0x${string}`);
-const fetchWithPayment = wrapFetchWithPayment(fetch, account);
+const client = new x402Client().register("eip155:8453", new ExactEvmScheme(account));
+const fetchWithPayment = wrapFetchWithPayment(fetch, client);
 
 async function createAndMonitorLandingPage() {
   // Step 1: Generate landing page
@@ -589,9 +592,7 @@ async function createAndMonitorLandingPage() {
 
   const { runId, liveUrl } = await response.json();
 
-  // Get payment transaction
-  const payment = decodeXPaymentResponse(response.headers.get("x-payment-response")!);
-  console.log("💳 Payment TX:", payment.transaction);
+  // Payment settles on-chain asynchronously
   console.log("📋 Run ID:", runId);
 
   // Step 2: Monitor progress
@@ -652,7 +653,7 @@ createAndMonitorLandingPage()
 
 | Error | Cause | Solution |
 |-------|-------|----------|
-| **402 Payment Required** | No X-PAYMENT header | Use x402 client library |
+| **402 Payment Required** | No PAYMENT-SIGNATURE header | Use x402 client library |
 | **400 Bad Request** | Invalid input | Check URL and description format |
 | **429 Too Many Requests** | Rate limit exceeded | Wait before retrying (10/hour limit) |
 | **Insufficient funds** | Not enough USDC | Add USDC to your wallet |
@@ -720,15 +721,15 @@ async function batchGenerate(campaigns: Array<{url: string, description: string}
 Set a maximum payment amount you're willing to authorize:
 
 ```typescript
-import { wrapFetchWithPayment } from "x402-fetch";
+import { wrapFetchWithPayment, x402Client } from "@x402/fetch";
+import { ExactEvmScheme } from "@x402/evm/exact/client";
 
-const fetchWithPayment = wrapFetchWithPayment(
-  fetch,
-  account,
-  {
-    maxPaymentAmount: 2.50, // Max $2.50 per request
-  }
-);
+const MAX_AMOUNT = 2_500_000n; // Max $2.50 per request (USDC, 6 decimals)
+const client = new x402Client()
+  .register("eip155:8453", new ExactEvmScheme(account))
+  .registerPolicy((_version, reqs) => reqs.filter((r) => BigInt(r.amount) <= MAX_AMOUNT));
+
+const fetchWithPayment = wrapFetchWithPayment(fetch, client);
 ```
 
 If the API requests more than $2.50, the client will reject the payment.

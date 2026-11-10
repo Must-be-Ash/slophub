@@ -7,9 +7,8 @@ import {
   verifyPayment,
   settlePayment,
   create402Response,
-  createPaymentResponseHeader,
+  getPaymentHeader,
 } from '@/lib/payment-verification';
-import type { Resource } from 'x402/types';
 
 // Increase timeout for workflow execution (max 300s on Hobby/Pro, 900s on Enterprise)
 export const maxDuration = 300;
@@ -17,25 +16,18 @@ export const maxDuration = 300;
 export async function POST(request: Request) {
   try {
     // 0. PAYMENT VERIFICATION (BEFORE EVERYTHING ELSE)
-    const paymentHeader = request.headers.get('X-PAYMENT');
-    const requestUrl = `${new URL(request.url).origin}${new URL(request.url).pathname}` as Resource;
+    const paymentHeader = getPaymentHeader(request);
+    const requestUrl = `${new URL(request.url).origin}${new URL(request.url).pathname}`;
 
-    const paymentRequirements = createPaymentRequirements(
-      '$1.99',        // Price in USDC
-      'base',         // Base mainnet
-      requestUrl,     // Resource URL
-      'Generate AI landing page with workflow execution'
-    );
+    const paymentRequirements = await createPaymentRequirements('$1.99', 'eip155:8453'); // Base mainnet (CAIP-2)
+    const paymentResource = { url: requestUrl, description: 'Generate AI landing page with workflow execution' };
 
     // Verify payment
     const verificationResult = await verifyPayment(paymentHeader, paymentRequirements);
 
     if (!verificationResult.isValid) {
       console.log('[API] Payment required - returning 402');
-      return NextResponse.json(
-        create402Response(paymentRequirements, verificationResult.error, verificationResult.payer),
-        { status: 402 }
-      );
+      return create402Response(paymentRequirements, paymentResource, verificationResult.error, verificationResult.payer);
     }
 
     console.log('[API] ✓ Payment verified from:', verificationResult.payer);
@@ -167,9 +159,8 @@ export async function POST(request: Request) {
           'X-RateLimit-Limit': rateLimit.limit.toString(),
           'X-RateLimit-Remaining': rateLimit.remaining.toString(),
           'X-RateLimit-Reset': rateLimit.reset.toString(),
-          // Add payment confirmation header
-          'X-PAYMENT-RESPONSE': createPaymentResponseHeader('pending'),
-          'Access-Control-Expose-Headers': 'X-PAYMENT-RESPONSE, X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset',
+          // Payment settles asynchronously, so no PAYMENT-RESPONSE receipt is available yet
+          'Access-Control-Expose-Headers': 'X-RateLimit-Limit, X-RateLimit-Remaining, X-RateLimit-Reset',
         },
       }
     );

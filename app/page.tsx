@@ -8,8 +8,9 @@ import Image from 'next/image';
 import { useIsSignedIn, useCurrentUser } from '@coinbase/cdp-hooks';
 import { AuthButton } from '@coinbase/cdp-react/components/AuthButton';
 import { getCurrentUser, toViemAccount } from '@coinbase/cdp-core';
-import { wrapFetchWithPayment } from 'x402-fetch';
-import { createWalletClient, http, publicActions } from 'viem';
+import { wrapFetchWithPayment, x402Client } from '@x402/fetch';
+import { ExactEvmScheme, toClientEvmSigner } from '@x402/evm';
+import { createPublicClient, http } from 'viem';
 import { base } from 'viem/chains';
 import { COST_CONFIG } from '@/lib/config';
 import { logPaymentInitiation, logPaymentSettlement, extractTxHashFromPaymentResponse } from '@/lib/payment-logger';
@@ -219,21 +220,20 @@ export default function Home() {
       const viemAccount = await toViemAccount(user.evmAccounts[0]);
       console.log('[Payment] Got viem account:', viemAccount.address);
 
-      // Step 2: Create viem wallet client for signing
-      const walletClient = createWalletClient({
-        account: viemAccount,
+      // Step 2: Create x402 signer (CDP account + public client for reads)
+      const publicClient = createPublicClient({
         chain: base,
         transport: http('https://mainnet.base.org'),
-      }).extend(publicActions);
-      console.log('[Payment] Created wallet client on Base network');
+      });
+      const signer = toClientEvmSigner(viemAccount as any, publicClient);
+      console.log('[Payment] Created x402 signer on Base network');
 
-      // Step 3: Wrap fetch with x402 payment capability
+      // Step 3: Wrap fetch with x402 v2 payment capability (policy enforces max amount)
       const maxPaymentAmount = BigInt(COST_CONFIG.maxPaymentAmount * 10 ** 6); // Convert to 6 decimals
-      const fetchFunc = wrapFetchWithPayment(
-        fetch,
-        walletClient as any,
-        maxPaymentAmount
-      ) as typeof fetch;
+      const client = new x402Client()
+        .register('eip155:8453', new ExactEvmScheme(signer))
+        .registerPolicy((_version, reqs) => reqs.filter((r) => BigInt(r.amount) <= maxPaymentAmount));
+      const fetchFunc = wrapFetchWithPayment(fetch, client) as typeof fetch;
       console.log('[Payment] Wrapped fetch with payment capability');
 
       // Step 4: Log payment initiation
@@ -255,8 +255,8 @@ export default function Home() {
 
       // Step 6: Handle response
       if (response.status === 402) {
-        console.warn('[Payment] Payment required (402), x402-fetch will handle automatically');
-        // The x402-fetch wrapper will retry with payment
+        console.warn('[Payment] Payment still required (402) after @x402/fetch retry');
+        // The @x402/fetch wrapper already retried with payment
         return;
       }
 
@@ -269,7 +269,7 @@ export default function Home() {
       console.log('[Workflow] ✓ Workflow started:', runId);
 
       // Step 7: Log payment settlement
-      const paymentResponseHeader = response.headers.get('X-PAYMENT-RESPONSE');
+      const paymentResponseHeader = response.headers.get('PAYMENT-RESPONSE');
       const txHash = extractTxHashFromPaymentResponse(paymentResponseHeader);
       if (txHash) {
         logPaymentSettlement('Landing Page Generation', txHash, COST_CONFIG.landingPageGeneration);

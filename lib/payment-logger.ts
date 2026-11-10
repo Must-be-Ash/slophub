@@ -6,11 +6,16 @@ export interface PaymentSettlement {
   baseScanUrl: string;
 }
 
-// Extract transaction hash from X-PAYMENT-RESPONSE header
+// Extract transaction hash from PAYMENT-RESPONSE header (base64 JSON settle response)
 export function extractTxHashFromPaymentResponse(
   paymentResponseHeader: string | null
 ): string | null {
   if (!paymentResponseHeader) return null;
+  try {
+    const decoded = JSON.parse(atob(paymentResponseHeader));
+    if (typeof decoded?.transaction === 'string' && decoded.transaction) return decoded.transaction;
+  } catch {}
+  // Legacy "tx_hash:0x..." format
   const match = paymentResponseHeader.match(/tx_hash:([0-9a-fA-Fx]+)/);
   return match ? match[1] : null;
 }

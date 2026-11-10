@@ -40,7 +40,7 @@ Blog Agent is an AI-powered landing page generator that creates conversion-focus
 │            Payment Verification (x402 Protocol)                  │
 │       POST /api/workflows/untitled-4 ($1.99 USDC on Base)      │
 │  ┌─────────────────────────────────────────────────────────┐   │
-│  │ 1. Verify X-PAYMENT header with CDP Facilitator        │   │
+│  │ 1. Verify PAYMENT-SIGNATURE header with CDP Facilitator        │   │
 │  │ 2. Check payment authorization signature               │   │
 │  │ 3. Settle payment asynchronously                       │   │
 │  └─────────────────────────────────────────────────────────┘   │
@@ -528,7 +528,7 @@ The workflow endpoint is protected by the x402 payment protocol, requiring $1.99
    ↓
 3. Payment signed with embedded wallet
    ↓
-4. X-PAYMENT header added to request
+4. PAYMENT-SIGNATURE header added to request (@x402/fetch)
    ↓
 5. Server verifies payment with CDP Facilitator
    ↓
@@ -544,7 +544,7 @@ The workflow endpoint is protected by the x402 payment protocol, requiring $1.99
 
 **Functions:**
 - `createPaymentRequirements()` - Defines payment terms
-- `verifyPayment()` - Validates X-PAYMENT header using CDP Facilitator
+- `verifyPayment()` - Validates PAYMENT-SIGNATURE header using CDP Facilitator (x402 v2 `x402ResourceServer`)
 - `settlePayment()` - Processes payment on-chain (async)
 - `create402Response()` - Returns 402 error with payment info
 
@@ -553,13 +553,12 @@ The workflow endpoint is protected by the x402 payment protocol, requiring $1.99
 // Payment requirements
 {
   scheme: 'exact',
-  network: 'base',
-  maxAmountRequired: '1990000', // $1.99 in USDC wei
-  resource: 'https://slophub.xyz/api/workflows/untitled-4',
-  description: 'Generate AI landing page with workflow execution',
+  network: 'eip155:8453', // Base mainnet (CAIP-2)
+  amount: '1990000', // $1.99 in USDC atomic units
   payTo: process.env.NEXT_PUBLIC_RECEIVING_WALLET_ADDRESS,
   asset: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913', // USDC on Base
   maxTimeoutSeconds: 120,
+  extra: { name: 'USD Coin', version: '2' },
 }
 ```
 
@@ -586,7 +585,7 @@ The workflow endpoint is protected by the x402 payment protocol, requiring $1.99
 **Request Headers:**
 ```
 Content-Type: application/json
-X-PAYMENT: <base64-encoded-payment-proof>
+PAYMENT-SIGNATURE: <base64-encoded-payment-proof>
 ```
 
 **Request Body:**
@@ -603,7 +602,7 @@ X-PAYMENT: <base64-encoded-payment-proof>
 ### Processing
 
 1. **Payment Verification**
-   - Verify X-PAYMENT header with CDP Facilitator
+   - Verify PAYMENT-SIGNATURE header with CDP Facilitator
    - Check payment authorization signature
    - Validate amount, network, and asset
    - Settle payment asynchronously
@@ -713,18 +712,22 @@ X-PAYMENT: <base64-encoded-payment-proof>
 **Payment Required (402):**
 ```json
 {
-  "x402Version": 1,
+  "x402Version": 2,
   "error": "Payment required",
+  "resource": {
+    "url": "https://slophub.xyz/api/workflows/untitled-4",
+    "description": "Generate AI landing page with workflow execution",
+    "mimeType": "application/json"
+  },
   "accepts": [
     {
       "scheme": "exact",
-      "network": "base",
-      "maxAmountRequired": "1990000",
-      "resource": "https://slophub.xyz/api/workflows/untitled-4",
-      "description": "Generate AI landing page with workflow execution",
+      "network": "eip155:8453",
+      "amount": "1990000",
       "payTo": "0xAbF01df9428EaD5418473A7c91244826A3Af23b3",
       "asset": "0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913",
-      "maxTimeoutSeconds": 120
+      "maxTimeoutSeconds": 120,
+      "extra": { "name": "USD Coin", "version": "2" }
     }
   ]
 }
@@ -745,7 +748,7 @@ X-PAYMENT: <base64-encoded-payment-proof>
 **Headers:**
 ```
 Content-Type: application/json
-X-PAYMENT: <base64-encoded-payment-proof>
+PAYMENT-SIGNATURE: <base64-encoded-payment-proof>
 ```
 
 **Request:**
@@ -918,7 +921,7 @@ CDP_API_KEY_SECRET=...
 
 # x402 Network Configuration
 FACILITATOR_URL=https://x402.org/facilitator
-NEXT_PUBLIC_NETWORK=base
+NEXT_PUBLIC_NETWORK=eip155:8453
 USDC_CONTRACT_ADDRESS=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913
 NEXT_PUBLIC_RECEIVING_WALLET_ADDRESS=0x...
 ```

@@ -1,51 +1,65 @@
-import { exact } from 'x402/schemes';
-import { useFacilitator } from 'x402/verify';
+import { NextResponse } from 'next/server';
+import { x402ResourceServer, HTTPFacilitatorClient } from '@x402/core/server';
 import {
-  PaymentPayload,
-  PaymentRequirements,
-  Resource,
-  Network,
-} from 'x402/types';
-import { processPriceToAtomicAmount } from 'x402/shared';
+  decodePaymentSignatureHeader,
+  encodePaymentRequiredHeader,
+  encodePaymentResponseHeader,
+} from '@x402/core/http';
+import type { Network, PaymentPayload, PaymentRequirements, SettleResponse } from '@x402/core/types';
+import { ExactEvmScheme } from '@x402/evm/exact/server';
 import { facilitator } from '@coinbase/x402';
 
-// CDP Facilitator - Required for Base mainnet
-const { verify, settle } = useFacilitator(facilitator);
-const x402Version = 1;
+// CDP Facilitator - Required for Base mainnet (x402 v2)
+const resourceServer = new x402ResourceServer(new HTTPFacilitatorClient(facilitator))
+  .register('eip155:8453', new ExactEvmScheme());
 
-export function createPaymentRequirements(
+let initPromise: Promise<void> | null = null;
+function ensureInitialized() {
+  initPromise ??= resourceServer.initialize().catch((error) => {
+    initPromise = null;
+    throw error;
+  });
+  return initPromise;
+}
+
+export interface PaymentResource {
+  url: string;
+  description: string;
+}
+
+export async function createPaymentRequirements(
   price: string, // e.g. "$0.01"
-  network: Network,
-  resource: Resource,
-  description: string
-): PaymentRequirements {
-  const atomicAmountForAsset = processPriceToAtomicAmount(price, network);
-
-  if ('error' in atomicAmountForAsset) {
-    throw new Error(atomicAmountForAsset.error);
-  }
-
-  const { maxAmountRequired, asset } = atomicAmountForAsset;
-
-  // Type guard: EVM assets have eip712 property
-  const extra = 'eip712' in asset ? {
-    name: asset.eip712.name,
-    version: asset.eip712.version,
-  } : undefined;
-
-  return {
+  network: Network // CAIP-2, e.g. "eip155:8453"
+): Promise<PaymentRequirements> {
+  await ensureInitialized();
+  const [requirements] = await resourceServer.buildPaymentRequirements({
     scheme: 'exact',
+    price,
     network,
-    maxAmountRequired,
-    resource,
-    description,
-    mimeType: 'application/json',
     payTo: process.env.NEXT_PUBLIC_RECEIVING_WALLET_ADDRESS as `0x${string}`,
     maxTimeoutSeconds: 120,
-    asset: asset.address,
-    outputSchema: undefined,
-    extra,
-  };
+  });
+
+  if (!requirements) {
+    throw new Error(`Facilitator does not support exact payments on ${network}`);
+  }
+  return requirements;
+}
+
+// Reads the v2 PAYMENT-SIGNATURE header (falls back to the legacy v1 X-PAYMENT header name)
+export function getPaymentHeader(request: Request): string | null {
+  return request.headers.get('PAYMENT-SIGNATURE') ?? request.headers.get('X-PAYMENT');
+}
+
+function decodePayment(
+  paymentHeader: string,
+  paymentRequirements: PaymentRequirements
+): PaymentPayload {
+  const decodedPayment = decodePaymentSignatureHeader(paymentHeader);
+  if (!resourceServer.findMatchingRequirements([paymentRequirements], decodedPayment)) {
+    throw new Error('Payment does not match the payment requirements');
+  }
+  return decodedPayment;
 }
 
 export async function verifyPayment(
@@ -60,15 +74,14 @@ export async function verifyPayment(
   if (!paymentHeader) {
     return {
       isValid: false,
-      error: 'X-PAYMENT header is required',
+      error: 'PAYMENT-SIGNATURE header is required',
     };
   }
 
   // Decode payment
   let decodedPayment: PaymentPayload;
   try {
-    decodedPayment = exact.evm.decodePayment(paymentHeader);
-    decodedPayment.x402Version = x402Version;
+    decodedPayment = decodePayment(paymentHeader, paymentRequirements);
   } catch (error) {
     console.error('[x402] Failed to decode payment:', error);
     return {
@@ -79,17 +92,17 @@ export async function verifyPayment(
 
   // Log payment details
   console.log('[x402] Payment received:');
-  // Type guard: EVM payloads have authorization, Solana has transaction
-  if (decodedPayment.payload && 'authorization' in decodedPayment.payload) {
-    console.log('  From:', decodedPayment.payload.authorization.from);
-    console.log('  To:', decodedPayment.payload.authorization.to);
-    console.log('  Amount:', decodedPayment.payload.authorization.value);
+  const authorization = (decodedPayment.payload as { authorization?: Record<string, string> }).authorization;
+  if (authorization) {
+    console.log('  From:', authorization.from);
+    console.log('  To:', authorization.to);
+    console.log('  Amount:', authorization.value);
   }
-  console.log('  Network:', decodedPayment.network);
+  console.log('  Network:', decodedPayment.accepted.network);
 
   // Verify with CDP facilitator
   try {
-    const response = await verify(decodedPayment, paymentRequirements);
+    const response = await resourceServer.verifyPayment(decodedPayment, paymentRequirements);
 
     if (!response.isValid) {
       console.error('[x402] Payment verification failed:', response.invalidReason);
@@ -120,19 +133,19 @@ export async function settlePayment(
 ): Promise<{
   success: boolean;
   txHash?: string;
+  settleResponse?: SettleResponse;
   error?: string;
 }> {
   try {
-    const decodedPayment = exact.evm.decodePayment(paymentHeader);
-    decodedPayment.x402Version = x402Version;
+    const decodedPayment = decodePayment(paymentHeader, paymentRequirements);
 
-    const settleResponse = await settle(decodedPayment, paymentRequirements);
+    const settleResponse = await resourceServer.settlePayment(decodedPayment, paymentRequirements);
 
     if (!settleResponse.success) {
-      console.error('[x402] Payment settlement failed');
+      console.error('[x402] Payment settlement failed:', settleResponse.errorReason);
       return {
         success: false,
-        error: 'Settlement failed',
+        error: settleResponse.errorReason || 'Settlement failed',
       };
     }
 
@@ -140,6 +153,7 @@ export async function settlePayment(
     return {
       success: true,
       txHash: settleResponse.transaction,
+      settleResponse,
     };
   } catch (error) {
     console.error('[x402] Settlement error:', error);
@@ -150,19 +164,31 @@ export async function settlePayment(
   }
 }
 
-export function create402Response(
+// Builds a v2 402 response: requirements in the PAYMENT-REQUIRED header (and mirrored in the body)
+export async function create402Response(
   paymentRequirements: PaymentRequirements,
+  resource: PaymentResource,
   error?: string,
   payer?: string
-) {
-  return {
-    x402Version,
-    error: error || 'Payment required',
-    accepts: [paymentRequirements],
-    ...(payer && { payer }),
-  };
+): Promise<NextResponse> {
+  const paymentRequired = await resourceServer.createPaymentRequiredResponse(
+    [paymentRequirements],
+    { url: resource.url, description: resource.description, mimeType: 'application/json' },
+    error || 'Payment required'
+  );
+
+  return NextResponse.json(
+    { ...paymentRequired, ...(payer && { payer }) },
+    {
+      status: 402,
+      headers: {
+        'PAYMENT-REQUIRED': encodePaymentRequiredHeader(paymentRequired),
+        'Access-Control-Expose-Headers': 'PAYMENT-REQUIRED',
+      },
+    }
+  );
 }
 
-export function createPaymentResponseHeader(txHash: string): string {
-  return `tx_hash:${txHash}`;
+export function createPaymentResponseHeader(settleResponse: SettleResponse): string {
+  return encodePaymentResponseHeader(settleResponse);
 }

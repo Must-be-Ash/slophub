@@ -95,7 +95,7 @@ The agent orchestrates multiple AI services to create your landing page:
    CDP_API_KEY_SECRET=...
 
    # x402 Payment
-   NEXT_PUBLIC_NETWORK=base
+   NEXT_PUBLIC_NETWORK=eip155:8453
    NEXT_PUBLIC_RECEIVING_WALLET_ADDRESS=0x...
    FACILITATOR_URL=https://x402.org/facilitator
    ```
@@ -150,7 +150,7 @@ pnpm update-thumbnails
 │            Payment Verification (x402 Protocol)                  │
 │       POST /api/workflows/untitled-4 ($1.99 USDC on Base)      │
 │  ┌─────────────────────────────────────────────────────────┐   │
-│  │ 1. Verify X-PAYMENT header with CDP Facilitator        │   │
+│  │ 1. Verify PAYMENT-SIGNATURE header with CDP Facilitator        │   │
 │  │ 2. Check payment authorization signature               │   │
 │  │ 3. Settle payment asynchronously                       │   │
 │  └─────────────────────────────────────────────────────────┘   │
@@ -315,7 +315,7 @@ pnpm update-thumbnails
 **Headers:**
 ```
 Content-Type: application/json
-X-PAYMENT: <base64-encoded-payment-proof>
+PAYMENT-SIGNATURE: <base64-encoded-payment-proof>
 ```
 
 **Request Body:**
@@ -483,7 +483,7 @@ CDP_API_KEY_ID=...
 CDP_API_KEY_SECRET=...
 
 # x402 Payment Configuration
-NEXT_PUBLIC_NETWORK=base
+NEXT_PUBLIC_NETWORK=eip155:8453
 NEXT_PUBLIC_RECEIVING_WALLET_ADDRESS=0x...
 FACILITATOR_URL=https://x402.org/facilitator
 USDC_CONTRACT_ADDRESS=0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913

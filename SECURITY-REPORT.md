@@ -1,5 +1,7 @@
 # API Security Report
 
+> **Note (x402 v2 migration):** this report was written against x402 v1. The app now uses x402 v2: the payment header is `PAYMENT-SIGNATURE` (legacy `X-PAYMENT` still read), 402 responses carry a `PAYMENT-REQUIRED` header with `x402Version: 2`, `network: "eip155:8453"` and `amount` instead of `maxAmountRequired`. The same checks (no header → 402, malformed header → 402) were re-verified after the migration.
+
 **Endpoint Tested:** `POST /api/workflows/untitled-4`
 **Test Date:** 2025-12-08
 **Status:** ✅ **SECURE - No abuse possible**

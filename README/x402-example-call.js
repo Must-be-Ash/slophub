@@ -4,7 +4,8 @@
  * This will make a real payment of $1.99 USDC on Base network
  */
 
-import { wrapFetchWithPayment, decodeXPaymentResponse } from 'x402-fetch';
+import { wrapFetchWithPayment, x402Client, decodePaymentResponseHeader } from '@x402/fetch';
+import { ExactEvmScheme } from '@x402/evm/exact/client';
 import { privateKeyToAccount } from 'viem/accounts';
 import dotenv from 'dotenv';
 import { writeFileSync } from 'fs';
@@ -144,9 +145,9 @@ async function testRaw402() {
         console.log('\n💰 Payment Requirements:');
         const requirement = json.accepts[0];
         console.log('   Network:', requirement.network);
-        console.log('   Amount:', (parseInt(requirement.maxAmountRequired) / 1000000).toFixed(2), 'USDC');
+        console.log('   Amount:', (parseInt(requirement.amount) / 1000000).toFixed(2), 'USDC');
         console.log('   Pay To:', requirement.payTo);
-        console.log('   Resource:', requirement.resource);
+        console.log('   Resource:', json.resource?.url);
       }
     } catch {
       console.log(responseText);
@@ -196,15 +197,17 @@ async function testX402Call() {
     console.log('✅ Wallet address:', account.address);
 
     // Wrap fetch with payment handler
-    console.log('💳 Initializing x402-fetch payment wrapper...');
-    const fetchWithPayment = wrapFetchWithPayment(fetch, account, {
-      maxPaymentAmount: 2.5, // Allow up to $2.50 USDC (our endpoint costs $1.99)
-    });
+    console.log('💳 Initializing @x402/fetch payment wrapper...');
+    const MAX_AMOUNT = 2_500_000n; // Allow up to $2.50 USDC (our endpoint costs $1.99)
+    const client = new x402Client()
+      .register('eip155:8453', new ExactEvmScheme(account))
+      .registerPolicy((_version, reqs) => reqs.filter((r) => BigInt(r.amount) <= MAX_AMOUNT));
+    const fetchWithPayment = wrapFetchWithPayment(fetch, client);
     console.log('✅ Payment handler ready (max: $2.50 USDC)\n');
 
     // Make the paid call
     console.log('📡 Making x402-protected request...');
-    console.log('   (x402-fetch will automatically handle payment)\n');
+    console.log('   (@x402/fetch will automatically handle payment)\n');
 
     const startTime = Date.now();
 
@@ -224,11 +227,11 @@ async function testX402Call() {
     const result = await response.json();
 
     // Get payment details
-    const paymentHeader = response.headers.get('x-payment-response');
+    const paymentHeader = response.headers.get('payment-response');
     let paymentResponse = null;
     if (paymentHeader) {
       try {
-        paymentResponse = decodeXPaymentResponse(paymentHeader);
+        paymentResponse = decodePaymentResponseHeader(paymentHeader);
       } catch (e) {
         console.log('⚠️  Could not decode payment response');
       }
